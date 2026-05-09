@@ -1,6 +1,6 @@
 # ZyphoraCMS
 
-A self-hosted, WordPress-style CMS built on Astro. SSR public site, admin panel at `/admin`, SQLite + Drizzle, session-cookie auth, a TipTap block editor, and a runtime theme system with a hooks API.
+A self-hosted CMS built on Astro. SSR public site, admin panel at `/admin`, SQLite + Drizzle, session-cookie auth, a TipTap block editor, and a runtime theme system with a hooks API.
 
 ## Stack
 
@@ -29,7 +29,7 @@ A self-hosted, WordPress-style CMS built on Astro. SSR public site, admin panel 
 ### Themes
 - **Runtime theme system** — themes are folders of Eta templates plus a `theme.json` manifest, loaded at request time (no rebuild needed)
 - **Uploadable themes** — drop a zip in the admin; install/uninstall from the Themes page. Bundled themes can't be uninstalled.
-- **Hooks API** — WordPress-style `addFilter` / `applyFilters` / `addAction` / `doAction` with priorities, wired by core for `the_title`, `the_content`, `posts_list`, and `post_render`
+- **Hooks API** — `addFilter` / `applyFilters` / `addAction` / `doAction` with priorities, wired by core for `the_title`, `the_content`, `posts_list`, and `post_render`
 - **Security** — themes ship templates and assets only. JavaScript inside theme zips is never loaded server-side; that would be RCE-by-design.
 
 ### Bundled default theme
