@@ -1,0 +1,99 @@
+---
+/**
+ * Themes admin page — install / activate / delete themes.
+ *
+ * All mutations are plain HTML form POSTs (matches the pattern used by other
+ * admin pages); the active theme determines what visitors see on the public
+ * site. We intentionally do not let admins delete the bundled `default` theme
+ * or the currently-active theme.
+ *
+ * Security note surfaced to the admin: theme uploads ship templates that run
+ * server-side. Only install themes from sources you trust.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { listThemes } from '../../../lib/themes/registry.ts';
+import { activateTheme, installFromZip, uninstallTheme } from '../../../lib/themes/install.ts';
+
+let success: string | null = null;
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? '');
+
+  try {
+    if (action === 'activate') {
+      const slug = String(form.get('slug') ?? '');
+      await activateTheme(slug);
+      success = `Activated "${slug}".`;
+    } else if (action === 'delete') {
+      const slug = String(form.get('slug') ?? '');
+      await uninstallTheme(slug);
+      success = `Deleted "${slug}".`;
+    } else if (action === 'upload') {
+      const file = form.get('file');
+      if (!(file instanceof File) || file.size === 0) {
+        error = 'Please choose a zip file.';
+      } else {
+        const buf = Buffer.from(await file.arrayBuffer());
+        const result = await installFromZip(buf);
+        success = `Installed "${result.name}" v${result.version}.`;
+      }
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Operation failed.';
+  }
+}
+
+const themes = await listThemes();
+---
+<AdminLayout title="Themes">
+  <div class="toolbar">
+    <h1 style="margin:0">Themes</h1>
+  </div>
+
+  {success && <div class="alert success">{success}</div>}
+  {error && <div class="alert error">{error}</div>}
+
+  <div class="card" style="margin-bottom:20px">
+    <h2 style="margin-top:0">Install a theme</h2>
+    <form method="POST" enctype="multipart/form-data" style="display:flex;gap:12px;align-items:center">
+      <input type="hidden" name="_action" value="upload" />
+      <input class="input" type="file" name="file" accept=".zip,application/zip" required />
+      <button type="submit" class="btn">Upload zip</button>
+    </form>
+    <div style="color:var(--muted);font-size:0.8rem;margin-top:8px">
+      Theme zip must contain <code>theme.json</code> at the top level. Templates run server-side — only install themes from sources you trust.
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+    {themes.map((t) => (
+      <div class="card" style="padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="font-weight:600">{t.name}</div>
+          {t.active && <span style="font-size:0.7rem;background:var(--accent);color:#fff;padding:2px 6px;border-radius:3px">ACTIVE</span>}
+          {t.bundled && <span style="font-size:0.7rem;background:#f0f1f4;color:var(--muted);padding:2px 6px;border-radius:3px">BUNDLED</span>}
+        </div>
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:6px">v{t.version}{t.author ? ` · ${t.author}` : ''}</div>
+        {t.description && <p style="font-size:0.85rem;color:#3a3f4b;margin:8px 0">{t.description}</p>}
+        <div style="display:flex;gap:6px;margin-top:12px">
+          {!t.active && (
+            <form method="POST">
+              <input type="hidden" name="_action" value="activate" />
+              <input type="hidden" name="slug" value={t.slug} />
+              <button type="submit" class="btn" style="font-size:0.8rem;padding:4px 10px">Activate</button>
+            </form>
+          )}
+          {!t.bundled && !t.active && (
+            <form method="POST" onsubmit="return confirm('Delete this theme?')">
+              <input type="hidden" name="_action" value="delete" />
+              <input type="hidden" name="slug" value={t.slug} />
+              <button type="submit" class="btn danger" style="font-size:0.8rem;padding:4px 10px">Delete</button>
+            </form>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+</AdminLayout>

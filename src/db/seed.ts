@@ -1,3 +1,10 @@
+/**
+ * First-run seed script.
+ *
+ * Idempotent — re-running on an already-seeded DB only logs and exits.
+ * Reads admin credentials from env (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`,
+ * `SEED_ADMIN_NAME`) so production deploys can avoid the well-known defaults.
+ */
 import { db, schema } from './client.ts';
 import { hash } from '@node-rs/argon2';
 import { randomUUID } from 'node:crypto';

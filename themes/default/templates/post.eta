@@ -1,0 +1,18 @@
+<%~ include('partials/head', { ...it, pageTitle: post.title, metaDescription: post.excerpt ?? site.description }) %>
+<%~ include('partials/header', it) %>
+    <main class="container">
+      <article class="post">
+        <header>
+          <h1><%= post.title %></h1>
+          <div class="post-meta">
+            <% if (post.publishedAt) { %><time datetime="<%= post.publishedAt.toISOString() %>"><%= post.publishedAt.toLocaleDateString() %></time><% } %>
+            <% if (post.authorName) { %> · by <%= post.authorName %><% } %>
+          </div>
+        </header>
+        <%# contentHtml is sanitized server-side in src/lib/posts.ts before storage,
+            so emitting it raw here is safe. Never bypass that pipeline. %>
+        <div class="prose"><%~ post.contentHtml %></div>
+      </article>
+      <p style="margin-top:32px"><a href="<%= url.home %>">← All posts</a></p>
+    </main>
+<%~ include('partials/footer', it) %>

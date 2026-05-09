@@ -1,3 +1,16 @@
+/**
+ * Global middleware — runs on every request before the page handler.
+ *
+ * Two responsibilities:
+ *   1. Resolve the session cookie into `Astro.locals.user` (or null).
+ *      Pages downstream can read this without re-querying.
+ *   2. Gate `/admin/*` (except `/admin/login`) behind authentication, with
+ *      a redirect that preserves the original path so the user lands back
+ *      where they were trying to go after logging in.
+ *
+ * Authorization (role checks for actions like "delete user") is per-page,
+ * not here — middleware only handles "is anyone logged in?".
+ */
 import { defineMiddleware } from 'astro:middleware';
 import { SESSION_COOKIE, getUserBySession, clearSessionCookie } from './lib/auth.ts';
 

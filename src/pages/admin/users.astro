@@ -1,4 +1,14 @@
 ---
+/**
+ * User management — admin-only. Three actions multiplexed by `_action`:
+ * create, delete, update_role. Two self-protection rules enforced here:
+ *   - You cannot delete your own account (would orphan an admin login).
+ *   - You cannot demote yourself out of `admin` (would lock you out of
+ *     this very page on the next request).
+ *
+ * Both rules are enforced server-side; the UI just hides the relevant
+ * controls on your own row to keep the experience honest.
+ */
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { db, schema } from '../../db/client.ts';
 import { eq, desc } from 'drizzle-orm';

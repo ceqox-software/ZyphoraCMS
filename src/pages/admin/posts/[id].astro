@@ -1,4 +1,13 @@
 ---
+/**
+ * Edit-post form. Mirrors `new.astro`'s validation+restore pattern; on save
+ * we PRG-redirect with `?saved=1` so the success banner survives a refresh
+ * and the POST doesn't replay if the user hits back.
+ *
+ * Authorization: `canEditPost` enforces the per-role rule (admins/editors
+ * can edit anyone's post; authors only their own). Without this gate, the
+ * routing layer alone would let any logged-in author edit any post.
+ */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import TiptapEditor from '../../../components/TiptapEditor.tsx';
 import { db, schema } from '../../../db/client.ts';

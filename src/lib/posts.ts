@@ -1,3 +1,12 @@
+/**
+ * Post create/update/delete + the form-validation schema and unique-slug helper.
+ *
+ * Two invariants enforced here that the rest of the app relies on:
+ *  1. `posts.contentHtml` is always run through `sanitizeHtml()` before
+ *     storage. The public site renders it raw, so this is the only thing
+ *     keeping stored XSS off the page. Never bypass.
+ *  2. Slugs are unique. Use `uniqueSlug()` for any write that touches `slug`.
+ */
 import { db, schema } from '../db/client.ts';
 import { eq, and, ne } from 'drizzle-orm';
 import { slugify } from './slug.ts';
@@ -5,6 +14,10 @@ import { sanitizeHtml } from './sanitize.ts';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
+/**
+ * Zod schema for the post form. Used by `new` and `[id]` admin pages so they
+ * share validation rules and error messages.
+ */
 export const postFormSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),
   slug: z.string().trim().max(80).optional(),
@@ -15,6 +28,11 @@ export const postFormSchema = z.object({
 
 export type PostFormInput = z.infer<typeof postFormSchema>;
 
+/**
+ * Pick an unused slug, suffixing `-2`, `-3`, … until we find one.
+ * `excludeId` lets a post keep its current slug during an update — without it,
+ * "edit and save without changing the slug" would always think it's a clash.
+ */
 async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
   let slug = base;
   let n = 1;
@@ -30,6 +48,7 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
   }
 }
 
+/** Insert a new post. Returns the generated id. Sanitizes the HTML on the way in. */
 export async function createPost(input: PostFormInput, authorId: string) {
   const baseSlug = slugify(input.slug && input.slug.length > 0 ? input.slug : input.title);
   const slug = await uniqueSlug(baseSlug);
@@ -52,6 +71,12 @@ export async function createPost(input: PostFormInput, authorId: string) {
   return id;
 }
 
+/**
+ * Update an existing post. The `prevStatus`/`prevPublishedAt` args let us
+ * preserve the original publish date when toggling draft↔published↔draft —
+ * republishing a post shouldn't reset its `publishedAt` if it was already
+ * published before.
+ */
 export async function updatePost(id: string, input: PostFormInput, prevStatus: 'draft' | 'published', prevPublishedAt: Date | null) {
   const baseSlug = slugify(input.slug && input.slug.length > 0 ? input.slug : input.title);
   const slug = await uniqueSlug(baseSlug, id);
@@ -77,6 +102,7 @@ export async function updatePost(id: string, input: PostFormInput, prevStatus: '
     .where(eq(schema.posts.id, id));
 }
 
+/** Hard-delete a post. There is no soft-delete / trash yet. */
 export async function deletePostById(id: string) {
   await db.delete(schema.posts).where(eq(schema.posts.id, id));
 }

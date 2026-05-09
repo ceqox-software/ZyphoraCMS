@@ -1,0 +1,21 @@
+<%~ include('partials/head', it) %>
+<%~ include('partials/header', it) %>
+    <main class="container">
+      <% if (!posts || posts.length === 0) { %>
+        <p style="color:var(--muted)">No posts yet. <a href="<%= url.admin %>">Sign in to the admin</a> to publish the first one.</p>
+      <% } else { %>
+        <ul class="post-list">
+          <% for (const p of posts) { %>
+            <li>
+              <h2><a href="<%= url.post(p.slug) %>"><%= p.title %></a></h2>
+              <div class="post-meta">
+                <% if (p.publishedAt) { %><time datetime="<%= p.publishedAt.toISOString() %>"><%= p.publishedAt.toLocaleDateString() %></time><% } %>
+                <% if (p.authorName) { %> · by <%= p.authorName %><% } %>
+              </div>
+              <% if (p.excerpt) { %><p class="post-excerpt"><%= p.excerpt %></p><% } %>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </main>
+<%~ include('partials/footer', it) %>

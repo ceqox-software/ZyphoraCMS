@@ -1,0 +1,16 @@
+<%
+/* Shared <head>. Title is built per-page from a `pageTitle` local; if none
+   is set we fall back to the site title. */
+const pageTitle = it.pageTitle ? `${it.pageTitle} · ${site.title}` : site.title;
+const metaDescription = it.metaDescription ?? site.description;
+%>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><%= pageTitle %></title>
+    <% if (metaDescription) { %><meta name="description" content="<%= metaDescription %>" /><% } %>
+    <link rel="stylesheet" href="<%= theme.assetUrl('style.css') %>" />
+  </head>
+  <body>

@@ -1,4 +1,9 @@
 ---
+/**
+ * Posts list — every post (drafts + published), most recently updated first.
+ * Editorial gatekeeping happens on individual edit/delete actions, not here:
+ * authors *see* every post but can only edit their own.
+ */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { db, schema } from '../../../db/client.ts';
 import { desc, eq } from 'drizzle-orm';

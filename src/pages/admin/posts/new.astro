@@ -1,4 +1,11 @@
 ---
+/**
+ * New-post form.
+ *
+ * On a validation error we re-render with the user's typed values restored,
+ * so they don't lose their work. On success we redirect to the edit page
+ * (PRG pattern, with `?created=1` so the edit page can show a success banner).
+ */
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import TiptapEditor from '../../../components/TiptapEditor.tsx';
 import { postFormSchema, createPost } from '../../../lib/posts.ts';

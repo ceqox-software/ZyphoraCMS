@@ -1,4 +1,11 @@
 ---
+/**
+ * Login page — the one `/admin/*` route the middleware lets through
+ * unauthenticated. Already-logged-in visitors are bounced straight to /admin.
+ *
+ * The post-login redirect is locked to paths that start with `/admin` to
+ * stop a crafted `?redirect=` from turning this form into an open redirect.
+ */
 import '../../styles/admin.css';
 import { db, schema } from '../../db/client.ts';
 import { eq } from 'drizzle-orm';

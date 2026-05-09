@@ -1,3 +1,25 @@
+/**
+ * Database client — single SQLite connection shared across the app.
+ *
+ * The path is overridable via `DATABASE_PATH` so tests / alternate deploys
+ * can point at a different file. The directory is auto-created on first run
+ * so a fresh checkout doesn't have to `mkdir data` before migrating.
+ *
+ * Why these pragmas:
+ *  - WAL improves concurrent read+write throughput and avoids blocking
+ *    writers behind readers.
+ *  - foreign_keys is OFF by default in SQLite (yes, really) — turning it on
+ *    here so our `references()` constraints actually fire.
+ *
+ * Drizzle is exported alongside the schema so callers can write
+ * `db.select().from(schema.posts)` without an extra import.
+ *
+ * Note that the `better-sqlite3` driver is synchronous — `db.select()...get()`
+ * returns a value, not a Promise. Call sites still write `await db...` so a
+ * future swap to libsql or Postgres (both async) won't require touching every
+ * callsite. `astro check` flags the `await`s as `ts(80007)` hints; that is
+ * intentional, do not strip them.
+ */
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { existsSync, mkdirSync } from 'node:fs';

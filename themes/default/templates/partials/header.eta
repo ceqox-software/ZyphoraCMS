@@ -1,0 +1,12 @@
+    <header class="site-header">
+      <div class="container">
+        <div>
+          <a href="<%= url.home %>" class="site-title"><%= site.title %></a>
+          <% if (site.description) { %><div class="site-tagline"><%= site.description %></div><% } %>
+        </div>
+        <nav class="site-nav">
+          <a href="<%= url.home %>">Home</a>
+          <a href="<%= url.admin %>">Admin</a>
+        </nav>
+      </div>
+    </header>

@@ -1,7 +1,14 @@
 ---
-import SiteLayout from '../layouts/SiteLayout.astro';
+/**
+ * Homepage — list of published posts.
+ *
+ * This route is intentionally thin: fetch the data, hand it to the theme
+ * renderer, and return whatever Response the active theme produces. The
+ * markup lives entirely in the theme's `index.eta` template.
+ */
 import { db, schema } from '../db/client.ts';
 import { eq, desc } from 'drizzle-orm';
+import { renderTheme } from '../lib/themes/render.ts';
 
 const posts = await db
   .select({
@@ -16,22 +23,10 @@ const posts = await db
   .where(eq(schema.posts.status, 'published'))
   .orderBy(desc(schema.posts.publishedAt))
   .all();
+
+return await renderTheme({
+  template: 'index',
+  pathname: Astro.url.pathname,
+  posts,
+});
 ---
-<SiteLayout>
-  {posts.length === 0 ? (
-    <p style="color:var(--muted)">No posts yet. <a href="/admin">Sign in to the admin</a> to publish the first one.</p>
-  ) : (
-    <ul class="post-list">
-      {posts.map((p) => (
-        <li>
-          <h2><a href={`/posts/${p.slug}`}>{p.title}</a></h2>
-          <div class="post-meta">
-            {p.publishedAt && <time datetime={p.publishedAt.toISOString()}>{p.publishedAt.toLocaleDateString()}</time>}
-            {p.authorName && <> · by {p.authorName}</>}
-          </div>
-          {p.excerpt && <p class="post-excerpt">{p.excerpt}</p>}
-        </li>
-      ))}
-    </ul>
-  )}
-</SiteLayout>

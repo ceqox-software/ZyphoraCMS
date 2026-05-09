@@ -1,3 +1,16 @@
+
+/**
+ * Drizzle schema — the single source of truth for the SQLite layout.
+ *
+ * Migrations in `./drizzle/` are generated from this file via `npm run db:generate`
+ * and applied by `npm run db:migrate`. Don't edit produced SQL by hand unless
+ * you know exactly what you're doing — re-running generate after a manual
+ * edit will overwrite it.
+ *
+ * Type aliases at the bottom (`User`, `NewPost`, etc.) are inferred from the
+ * tables and re-exported so other modules don't need to import drizzle to
+ * type their function signatures.
+ */
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
@@ -44,9 +57,21 @@ export const settings = sqliteTable('settings', {
   value: text('value').notNull(),
 });
 
+export const themes = sqliteTable('themes', {
+  slug: text('slug').primaryKey(),
+  name: text('name').notNull(),
+  version: text('version').notNull(),
+  author: text('author'),
+  description: text('description'),
+  bundled: integer('bundled', { mode: 'boolean' }).notNull().default(false),
+  installedAt: integer('installed_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Media = typeof media.$inferSelect;
+export type Theme = typeof themes.$inferSelect;
+export type NewTheme = typeof themes.$inferInsert;

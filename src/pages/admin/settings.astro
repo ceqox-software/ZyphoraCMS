@@ -1,4 +1,13 @@
 ---
+/**
+ * Settings page — site-wide config (title, description) and
+ * change-your-own-password. Two unrelated actions on one page; keeping them
+ * together because there isn't enough yet to justify splitting.
+ *
+ * Password change verifies the current password before accepting a new one
+ * so a momentarily-unattended logged-in browser can't be hijacked into
+ * locking out the real user.
+ */
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getSetting, setSetting } from '../../lib/settings.ts';
 import { hashPassword, verifyPassword } from '../../lib/auth.ts';

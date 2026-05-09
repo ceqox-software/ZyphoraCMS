@@ -1,4 +1,12 @@
 ---
+/**
+ * Media library — upload + delete. Two-action POST endpoint (`_action`
+ * defaults to upload).
+ *
+ * Storage details (size limits, MIME allowlist, on-disk layout) live in
+ * `src/lib/media.ts` so swapping to a remote store later only touches one
+ * file, not this page.
+ */
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { db, schema } from '../../db/client.ts';
 import { desc, eq } from 'drizzle-orm';

@@ -1,3 +1,8 @@
+/**
+ * Delete-post endpoint — POST-only so a stray GET (prefetch, accidental
+ * navigation) can't destroy data. Reuses `canEditPost` so authors can only
+ * delete posts they could also edit.
+ */
 import type { APIRoute } from 'astro';
 import { db, schema } from '../../../../db/client.ts';
 import { eq } from 'drizzle-orm';

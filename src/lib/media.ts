@@ -1,3 +1,15 @@
+/**
+ * Local-filesystem media storage.
+ *
+ * Files land in `public/uploads/` (gitignored) with random UUID names so the
+ * original filename can't influence the URL or be guessed. To swap to S3/R2
+ * later, replace the three exported functions below (`saveUpload`,
+ * `deleteUpload`, `publicUrl`) — every call site goes through them, so the
+ * rest of the codebase won't need to change.
+ *
+ * MIME allowlist + 10 MB cap are intentionally simple. If you grow this list,
+ * keep an eye on SVG (it can carry script — DOMPurify is not run on uploads).
+ */
 import { existsSync, mkdirSync } from 'node:fs';
 import { writeFile, unlink } from 'node:fs/promises';
 import { join, extname } from 'node:path';
@@ -21,6 +33,15 @@ export type SavedFile = {
   sizeBytes: number;
 };
 
+/**
+ * Persist an uploaded `File` to the uploads dir, applying size + MIME limits.
+ * Returns the generated filename + metadata; the caller is responsible for
+ * inserting the matching `media` row.
+ *
+ * The extension is sanitized (lowercased, alphanumeric only) before being
+ * appended to a fresh UUID so a malicious filename can't smuggle anything
+ * surprising onto disk or into URLs.
+ */
 export async function saveUpload(file: File): Promise<SavedFile> {
   if (file.size === 0) throw new Error('Empty file');
   if (file.size > MAX_BYTES) throw new Error('File exceeds 10 MB limit');
@@ -34,6 +55,7 @@ export async function saveUpload(file: File): Promise<SavedFile> {
   return { filename, mimeType: file.type, sizeBytes: file.size };
 }
 
+/** Best-effort delete of a stored file. Missing files are silently ignored. */
 export async function deleteUpload(filename: string) {
   try {
     await unlink(join(UPLOADS_DIR, filename));
@@ -42,6 +64,7 @@ export async function deleteUpload(filename: string) {
   }
 }
 
+/** Public URL for a stored file. Astro serves `public/` at the site root. */
 export function publicUrl(filename: string): string {
   return `/uploads/${filename}`;
 }
