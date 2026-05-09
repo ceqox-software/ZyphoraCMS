@@ -87,6 +87,10 @@ if (Astro.request.method === 'POST') {
 const comments = await getApprovedComments(row.id);
 const commentSubmitted = Astro.url.searchParams.get('comment') === 'pending';
 
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const formatComment = (s: string) => escapeHtml(s).replace(/\r?\n/g, '<br>');
+
 // Strip the internal `id` from the post payload exposed to the template —
 // theme templates don't need it and shouldn't grow a dependency on it.
 const { id: _postId, ...publicPost } = row;
@@ -100,6 +104,7 @@ return await renderTheme({
     authorName: c.authorName,
     authorUrl: c.authorUrl,
     content: c.content,
+    contentHtml: formatComment(c.content),
     createdAt: c.createdAt,
   })),
   commentForm,

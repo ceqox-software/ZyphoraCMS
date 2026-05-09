@@ -53,15 +53,17 @@ export type SitePost = {
 };
 
 /**
- * Public-facing comment shape passed into theme templates. Plain text only —
- * `content` is HTML-stripped server-side in lib/comments.ts before storage,
- * and the template is expected to escape it on render.
+ * Public-facing comment shape passed into theme templates. `content` is the
+ * raw plain-text comment body; `contentHtml` is the same text escaped and
+ * with `\n` converted to `<br>`, ready for `<%~ %>` in templates. The route
+ * renders `contentHtml` so theme authors don't have to escape inline.
  */
 export type SiteComment = {
   id: string;
   authorName: string;
   authorUrl: string | null;
   content: string;
+  contentHtml: string;
   createdAt: Date;
 };
 

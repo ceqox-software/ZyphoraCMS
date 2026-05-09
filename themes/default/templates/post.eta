@@ -39,11 +39,7 @@
                     </span>
                     <time class="comment-date" datetime="<%= c.createdAt.toISOString() %>"><%= c.createdAt.toLocaleDateString() %></time>
                   </div>
-                  <% /* content is plain text, stripped of HTML on insert. We escape
-                        with <%= and then convert raw \n into <br> on the already-
-                        escaped string — safe because the only HTML in scope is the
-                        <br> tag we ourselves emit. */ %>
-                  <p class="comment-content"><%~ String(c.content).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\r?\n/g, '<br>') %></p>
+                  <p class="comment-content"><%~ c.contentHtml %></p>
                 </div>
               </li>
             <% }); %>
