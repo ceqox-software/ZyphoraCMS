@@ -36,6 +36,7 @@ let values = {
   excerpt: post.excerpt ?? '',
   contentHtml: post.contentHtml,
   status: post.status,
+  category: post.category,
 };
 
 if (Astro.url.searchParams.get('created') === '1') success = 'Post created.';
@@ -50,16 +51,19 @@ if (Astro.request.method === 'POST') {
     excerpt: form.get('excerpt') ?? '',
     contentHtml: form.get('contentHtml') ?? '',
     status: form.get('status') ?? 'draft',
+    category: form.get('category') ?? 'news',
   });
 
   if (!parsed.success) {
     error = parsed.error.issues[0]?.message ?? 'Invalid input';
+    const rawCategory = String(form.get('category') ?? 'news');
     values = {
       title: String(form.get('title') ?? ''),
       slug: String(form.get('slug') ?? ''),
       excerpt: String(form.get('excerpt') ?? ''),
       contentHtml: String(form.get('contentHtml') ?? ''),
       status: (form.get('status') === 'published' ? 'published' : 'draft'),
+      category: (['news', 'travel', 'gadgets', 'reviews'].includes(rawCategory) ? rawCategory : 'news') as 'news' | 'travel' | 'gadgets' | 'reviews',
     };
   } else {
     // Pass the previous status + publishedAt so updatePost can preserve the
@@ -106,6 +110,15 @@ if (Astro.url.searchParams.get('saved') === '1') success = 'Post saved.';
         <select class="select" id="status" name="status">
           <option value="draft" selected={values.status === 'draft'}>Draft</option>
           <option value="published" selected={values.status === 'published'}>Published</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="category">Category</label>
+        <select class="select" id="category" name="category">
+          <option value="news" selected={values.category === 'news'}>News</option>
+          <option value="travel" selected={values.category === 'travel'}>Travel</option>
+          <option value="gadgets" selected={values.category === 'gadgets'}>Gadgets</option>
+          <option value="reviews" selected={values.category === 'reviews'}>Reviews</option>
         </select>
       </div>
     </div>

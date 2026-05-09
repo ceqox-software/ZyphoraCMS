@@ -11,8 +11,8 @@ import TiptapEditor from '../../../components/TiptapEditor.tsx';
 import { postFormSchema, createPost } from '../../../lib/posts.ts';
 
 let error: string | null = null;
-let values: { title: string; slug: string; excerpt: string; contentHtml: string; status: 'draft' | 'published' } = {
-  title: '', slug: '', excerpt: '', contentHtml: '', status: 'draft',
+let values: { title: string; slug: string; excerpt: string; contentHtml: string; status: 'draft' | 'published'; category: 'news' | 'travel' | 'gadgets' | 'reviews' } = {
+  title: '', slug: '', excerpt: '', contentHtml: '', status: 'draft', category: 'news',
 };
 
 if (Astro.request.method === 'POST') {
@@ -25,18 +25,21 @@ if (Astro.request.method === 'POST') {
     excerpt: form.get('excerpt') ?? '',
     contentHtml: form.get('contentHtml') ?? '',
     status: form.get('status') ?? 'draft',
+    category: form.get('category') ?? 'news',
   });
 
   if (!parsed.success) {
     // Keep the raw form values around so re-rendering the page restores
     // what the user typed instead of clearing the form on error.
     error = parsed.error.issues[0]?.message ?? 'Invalid input';
+    const rawCategory = String(form.get('category') ?? 'news');
     values = {
       title: String(form.get('title') ?? ''),
       slug: String(form.get('slug') ?? ''),
       excerpt: String(form.get('excerpt') ?? ''),
       contentHtml: String(form.get('contentHtml') ?? ''),
       status: form.get('status') === 'published' ? 'published' : 'draft',
+      category: (['news', 'travel', 'gadgets', 'reviews'].includes(rawCategory) ? rawCategory : 'news') as 'news' | 'travel' | 'gadgets' | 'reviews',
     };
   } else {
     // Insert + redirect (PRG). The edit page picks up `?created=1` and
@@ -77,6 +80,15 @@ if (Astro.request.method === 'POST') {
         <select class="select" id="status" name="status">
           <option value="draft" selected={values.status === 'draft'}>Draft</option>
           <option value="published" selected={values.status === 'published'}>Published</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="category">Category</label>
+        <select class="select" id="category" name="category">
+          <option value="news" selected={values.category === 'news'}>News</option>
+          <option value="travel" selected={values.category === 'travel'}>Travel</option>
+          <option value="gadgets" selected={values.category === 'gadgets'}>Gadgets</option>
+          <option value="reviews" selected={values.category === 'reviews'}>Reviews</option>
         </select>
       </div>
     </div>

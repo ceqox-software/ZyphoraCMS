@@ -17,6 +17,7 @@ const posts = await db
     excerpt: schema.posts.excerpt,
     publishedAt: schema.posts.publishedAt,
     authorName: schema.users.displayName,
+    category: schema.posts.category,
   })
   .from(schema.posts)
   .leftJoin(schema.users, eq(schema.users.id, schema.posts.authorId))

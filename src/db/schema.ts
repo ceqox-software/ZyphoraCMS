@@ -45,6 +45,7 @@ export const posts = sqliteTable('posts', {
   excerpt: text('excerpt'),
   contentHtml: text('content_html').notNull().default(''),
   status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
+  category: text('category', { enum: ['news', 'travel', 'gadgets', 'reviews'] }).notNull().default('news'),
   authorId: text('author_id').notNull().references(() => users.id),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),

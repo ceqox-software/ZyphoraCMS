@@ -13,38 +13,86 @@
           <p><a href="<%= url.admin %>">Sign in to the admin</a> to publish the first one.</p>
         </div>
       <% } else {
-           const featured = posts[0];
-           const rest = posts.slice(1);
+           const featured = posts.slice(0, 4);
+           const rest = posts.slice(4);
       %>
         <h2 id="posts" class="section-heading">Featured</h2>
-        <article class="featured-post">
-          <div class="featured-post-body">
-            <h3 class="featured-post-title"><a href="<%= url.post(featured.slug) %>"><%= featured.title %></a></h3>
-            <div class="post-meta">
-              <% if (featured.publishedAt) { %><time datetime="<%= featured.publishedAt.toISOString() %>"><%= featured.publishedAt.toLocaleDateString() %></time><% } %>
-              <% if (featured.authorName) { %> · by <%= featured.authorName %><% } %>
-            </div>
-            <% if (featured.excerpt) { %><p class="featured-post-excerpt"><%= featured.excerpt %></p><% } %>
-            <p class="featured-post-cta"><a href="<%= url.post(featured.slug) %>">Read article →</a></p>
-          </div>
-        </article>
-
-        <% if (rest.length > 0) { %>
-          <h2 class="section-heading section-heading--spaced">More posts</h2>
-          <ul class="post-list post-list--grid">
-            <% for (const p of rest) { %>
-              <li class="post-card">
-                <h3 class="post-card-title"><a href="<%= url.post(p.slug) %>"><%= p.title %></a></h3>
-                <div class="post-meta">
-                  <% if (p.publishedAt) { %><time datetime="<%= p.publishedAt.toISOString() %>"><%= p.publishedAt.toLocaleDateString() %></time><% } %>
-                  <% if (p.authorName) { %> · by <%= p.authorName %><% } %>
+        <ul class="featured-grid">
+          <% for (const f of featured) { %>
+            <li class="featured-card">
+              <a class="featured-card-link" href="<%= url.post(f.slug) %>">
+                <div class="featured-card-media">
+                  <img class="featured-card-image" src="https://picsum.photos/seed/<%= f.slug %>/640/400" alt="" loading="lazy" width="640" height="400" />
                 </div>
-                <% if (p.excerpt) { %><p class="post-excerpt"><%= p.excerpt %></p><% } %>
-                <p class="post-card-more"><a href="<%= url.post(p.slug) %>">Read more →</a></p>
-              </li>
+                <div class="featured-card-overlay">
+                  <h3 class="featured-card-title"><%= f.title %></h3>
+                  <% if (f.excerpt) { %><p class="featured-card-excerpt"><%= f.excerpt %></p><% } %>
+                </div>
+              </a>
+            </li>
+          <% } %>
+        </ul>
+
+        <%
+          const categories = [
+            { slug: 'news', label: 'News' },
+            { slug: 'travel', label: 'Travel' },
+            { slug: 'gadgets', label: 'Gadgets' },
+            { slug: 'reviews', label: 'Reviews' },
+          ];
+          const buckets = { news: [], travel: [], gadgets: [], reviews: [] };
+          for (const p of posts) {
+            const c = p.category || 'news';
+            if (buckets[c]) buckets[c].push(p);
+          }
+        %>
+        <h2 class="section-heading section-heading--spaced">Browse by category</h2>
+        <div class="post-tabs" role="tablist" aria-label="Categories">
+          <% for (const c of categories) { const isActive = c.slug === 'news'; %>
+            <button
+              type="button"
+              role="tab"
+              id="post-tab-<%= c.slug %>"
+              aria-controls="post-panel-<%= c.slug %>"
+              aria-selected="<%= isActive ? 'true' : 'false' %>"
+              tabindex="<%= isActive ? '0' : '-1' %>"
+              data-category="<%= c.slug %>"
+              class="post-tab<%= isActive ? ' is-active' : '' %>"
+            ><%= c.label %></button>
+          <% } %>
+        </div>
+        <div class="post-tabs-viewport">
+          <div class="post-tabs-track" data-active="news">
+            <% for (const c of categories) { const bucket = buckets[c.slug]; const isActive = c.slug === 'news'; %>
+              <section
+                role="tabpanel"
+                id="post-panel-<%= c.slug %>"
+                aria-labelledby="post-tab-<%= c.slug %>"
+                data-category="<%= c.slug %>"
+                class="post-tab-panel"
+                <% if (!isActive) { %>aria-hidden="true"<% } %>
+              >
+                <% if (bucket.length === 0) { %>
+                  <div class="post-tab-empty">No posts in this category yet.</div>
+                <% } else { %>
+                  <ul class="post-list post-list--grid">
+                    <% for (const p of bucket) { %>
+                      <li class="post-card">
+                        <h3 class="post-card-title"><a href="<%= url.post(p.slug) %>"><%= p.title %></a></h3>
+                        <div class="post-meta">
+                          <% if (p.publishedAt) { %><time datetime="<%= p.publishedAt.toISOString() %>"><%= p.publishedAt.toLocaleDateString() %></time><% } %>
+                          <% if (p.authorName) { %> · by <%= p.authorName %><% } %>
+                        </div>
+                        <% if (p.excerpt) { %><p class="post-excerpt"><%= p.excerpt %></p><% } %>
+                        <p class="post-card-more"><a href="<%= url.post(p.slug) %>">Read more →</a></p>
+                      </li>
+                    <% } %>
+                  </ul>
+                <% } %>
+              </section>
             <% } %>
-          </ul>
-        <% } %>
+          </div>
+        </div>
       <% } %>
     </main>
 <%~ include('partials/footer', it) %>

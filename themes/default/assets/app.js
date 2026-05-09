@@ -99,9 +99,69 @@
     });
   }
 
+  function initPostTabs() {
+    var tablist = document.querySelector('.post-tabs[role="tablist"]');
+    var track = document.querySelector('.post-tabs-track');
+    if (!tablist || !track) return;
+
+    var tabs = Array.prototype.slice.call(tablist.querySelectorAll('button[role="tab"]'));
+    if (tabs.length === 0) return;
+
+    var panels = {};
+    Array.prototype.forEach.call(track.querySelectorAll('[role="tabpanel"]'), function (panel) {
+      panels[panel.getAttribute('data-category')] = panel;
+    });
+
+    function activate(category, focusTab) {
+      track.setAttribute('data-active', category);
+      tabs.forEach(function (tab) {
+        var isActive = tab.getAttribute('data-category') === category;
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        tab.setAttribute('tabindex', isActive ? '0' : '-1');
+        tab.classList.toggle('is-active', isActive);
+        if (isActive && focusTab) tab.focus();
+      });
+      Object.keys(panels).forEach(function (key) {
+        if (key === category) {
+          panels[key].removeAttribute('aria-hidden');
+        } else {
+          panels[key].setAttribute('aria-hidden', 'true');
+        }
+      });
+    }
+
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () {
+        activate(tab.getAttribute('data-category'), false);
+      });
+      tab.addEventListener('keydown', function (event) {
+        var nextIndex = null;
+        switch (event.key) {
+          case 'ArrowLeft':
+            nextIndex = (index - 1 + tabs.length) % tabs.length;
+            break;
+          case 'ArrowRight':
+            nextIndex = (index + 1) % tabs.length;
+            break;
+          case 'Home':
+            nextIndex = 0;
+            break;
+          case 'End':
+            nextIndex = tabs.length - 1;
+            break;
+          default:
+            return;
+        }
+        event.preventDefault();
+        activate(tabs[nextIndex].getAttribute('data-category'), true);
+      });
+    });
+  }
+
   function init() {
     initThemeToggle();
     initNavToggle();
+    initPostTabs();
   }
 
   if (document.readyState === 'loading') {

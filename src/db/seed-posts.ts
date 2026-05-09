@@ -24,7 +24,8 @@ if (!author) {
 
 // daysAgo is relative to "now" so re-running keeps a sensible chronology
 // without us needing to hardcode dates.
-type DemoPost = { title: string; excerpt: string; contentHtml: string; daysAgo: number };
+type Category = 'news' | 'travel' | 'gadgets' | 'reviews';
+type DemoPost = { title: string; excerpt: string; contentHtml: string; daysAgo: number; category: Category };
 
 const demoPosts: DemoPost[] = [
   {
@@ -41,6 +42,7 @@ const demoPosts: DemoPost[] = [
       <p>This post (and the others below) was created by the demo seed script. Edit or delete them from the admin once you've had a look around.</p>
     `,
     daysAgo: 0,
+    category: 'news',
   },
   {
     title: 'Designing the dark mode toggle',
@@ -55,6 +57,7 @@ const demoPosts: DemoPost[] = [
       <blockquote>The cheapest accessibility win is a focus ring that's actually visible in both palettes.</blockquote>
     `,
     daysAgo: 2,
+    category: 'gadgets',
   },
   {
     title: 'Themes are runtime, plugins are not',
@@ -65,6 +68,7 @@ const demoPosts: DemoPost[] = [
       <p>Plugins, when they happen, will be a separate decision with their own threat model. For now, hooks (<code>addFilter</code>, <code>applyFilters</code>, <code>addAction</code>, <code>doAction</code>) are wired by core code only — and that's enough to do useful work.</p>
     `,
     daysAgo: 5,
+    category: 'reviews',
   },
   {
     title: 'A tour of the admin',
@@ -75,6 +79,7 @@ const demoPosts: DemoPost[] = [
       <p>Roles: <code>admin</code> can manage users, <code>editor</code> can edit any post, <code>author</code> can only edit their own.</p>
     `,
     daysAgo: 9,
+    category: 'gadgets',
   },
   {
     title: 'Why SQLite, and when to leave it',
@@ -84,6 +89,7 @@ const demoPosts: DemoPost[] = [
       <p>The day you need horizontal scaling, two things have to change: sessions move out of SQLite (Redis is the obvious next step), and the database itself shifts to Postgres or libsql. The schema is portable; the awaits scattered around the data layer are intentional, exactly so that swap doesn't require a rewrite.</p>
     `,
     daysAgo: 14,
+    category: 'reviews',
   },
   {
     title: 'Sanitization is the whole story',
@@ -93,6 +99,7 @@ const demoPosts: DemoPost[] = [
       <p>The public template renders post content with <code>set:html</code> / <code>&lt;%~ %&gt;</code> — raw, unescaped output. That's only safe because the bytes hit DOMPurify on the way <em>in</em>. If you ever add another field that holds rich HTML, route it through the same sanitizer. There are no exceptions.</p>
     `,
     daysAgo: 21,
+    category: 'news',
   },
   {
     title: 'Hello, world',
@@ -102,6 +109,7 @@ const demoPosts: DemoPost[] = [
       <p>Open the admin, write a real post, and delete this one when you're ready.</p>
     `,
     daysAgo: 30,
+    category: 'travel',
   },
 ];
 
@@ -127,6 +135,7 @@ for (const post of demoPosts) {
     excerpt: post.excerpt,
     contentHtml: sanitizeHtml(post.contentHtml.trim()),
     status: 'published',
+    category: post.category,
     authorId: author.id,
     publishedAt,
     createdAt: publishedAt,
@@ -135,5 +144,22 @@ for (const post of demoPosts) {
   inserted += 1;
 }
 
-console.log(`Demo posts: ${inserted} inserted, ${skipped} already existed.`);
+// One-time backfill for rows seeded before `category` existed: only touch
+// rows still on the schema default ('news') so user edits to category aren't
+// clobbered. Idempotent — once corrected, subsequent runs find nothing to do.
+let recategorized = 0;
+for (const post of demoPosts) {
+  if (post.category === 'news') continue;
+  const slug = slugify(post.title);
+  const row = await db
+    .select({ id: schema.posts.id, category: schema.posts.category })
+    .from(schema.posts)
+    .where(eq(schema.posts.slug, slug))
+    .get();
+  if (!row || row.category !== 'news') continue;
+  await db.update(schema.posts).set({ category: post.category }).where(eq(schema.posts.id, row.id));
+  recategorized += 1;
+}
+
+console.log(`Demo posts: ${inserted} inserted, ${skipped} already existed, ${recategorized} recategorized.`);
 process.exit(0);

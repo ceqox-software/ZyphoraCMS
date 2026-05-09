@@ -15,6 +15,13 @@
       "when": 1778278620129,
       "tag": "0001_themes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778345378555,
+      "tag": "0002_smiling_morbius",
+      "breakpoints": true
     }
   ]
 }

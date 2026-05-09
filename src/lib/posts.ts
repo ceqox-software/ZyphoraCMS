@@ -24,6 +24,7 @@ export const postFormSchema = z.object({
   excerpt: z.string().trim().max(500).optional(),
   contentHtml: z.string().default(''),
   status: z.enum(['draft', 'published']).default('draft'),
+  category: z.enum(['news', 'travel', 'gadgets', 'reviews']).default('news'),
 });
 
 export type PostFormInput = z.infer<typeof postFormSchema>;
@@ -68,6 +69,7 @@ export async function createPost(input: PostFormInput, authorId: string) {
     excerpt: input.excerpt ?? null,
     contentHtml: sanitizeHtml(input.contentHtml),
     status: input.status,
+    category: input.category,
     authorId,
     publishedAt,
     createdAt: now,
@@ -106,6 +108,7 @@ export async function updatePost(id: string, input: PostFormInput, prevStatus: '
       excerpt: input.excerpt ?? null,
       contentHtml: sanitizeHtml(input.contentHtml),
       status: input.status,
+      category: input.category,
       publishedAt,
       updatedAt: now,
     })
