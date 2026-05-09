@@ -1,4 +1,4 @@
-# Contributing to ZyphoraCMS
+# Contributing to Zyphora
 
 Thanks for taking an interest. This file covers how to file issues, send pull requests, and the conventions that keep the codebase predictable.
 
@@ -8,11 +8,11 @@ By participating in this project you agree to follow the [Code of Conduct](./COD
 
 Before opening a bug report, please:
 
-1. Check that the bug isn't already in [issues](https://github.com/ceqox-software/ZyphoraCMS/issues).
+1. Check that the bug isn't already in [issues](https://github.com/ceqox-software/Zyphora/issues).
 2. Confirm you're on Node `>=22.12.0` and the latest `main`.
 3. Include steps to reproduce, the expected behaviour, and what actually happened. A minimal repro saves everyone time.
 
-For template / theme bugs, paste the relevant snippet of the `.eta` template along with the error. Eta's tokenizer is finicky around `<%` / `%>` substrings — see [#5](https://github.com/ceqox-software/ZyphoraCMS/issues/5).
+For template / theme bugs, paste the relevant snippet of the `.eta` template along with the error. Eta's tokenizer is finicky around `<%` / `%>` substrings — see [#5](https://github.com/ceqox-software/Zyphora/issues/5).
 
 ## Requesting features
 
@@ -77,7 +77,7 @@ If you're adding a hook, register it in `src/lib/themes/render.ts` so themes can
 
 - Schema lives in `src/db/schema.ts`. Generate migrations with `npm run db:generate`, apply with `npm run db:migrate`.
 - Migrations are SQL files in `./drizzle/` plus snapshots in `./drizzle/meta/`. Both are committed.
-- `drizzle-kit` occasionally re-emits previously-applied tables when its meta is out of sync (see [#1](https://github.com/ceqox-software/ZyphoraCMS/issues/1)). If your generated migration includes a `CREATE TABLE` you didn't ask for, hand-trim it before applying — and mention it in the PR.
+- `drizzle-kit` occasionally re-emits previously-applied tables when its meta is out of sync (see [#1](https://github.com/ceqox-software/Zyphora/issues/1)). If your generated migration includes a `CREATE TABLE` you didn't ask for, hand-trim it before applying — and mention it in the PR.
 - Seed scripts (`db:seed`, `db:seed-posts`) must stay idempotent. Re-running them on a populated DB should never destroy work.
 
 ## Tests

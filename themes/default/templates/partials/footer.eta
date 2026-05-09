@@ -10,7 +10,7 @@
         </nav>
       </div>
       <div class="site-footer-meta">
-        <div class="container">© <%= year %> <%= site.title %> · powered by ZyphoraCMS</div>
+        <div class="container">© <%= year %> <%= site.title %> · powered by Zyphora</div>
       </div>
     </footer>
   </body>

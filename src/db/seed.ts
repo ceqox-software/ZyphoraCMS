@@ -39,8 +39,8 @@ if (existing) {
 const siteTitle = await db.select().from(schema.settings).where(eq(schema.settings.key, 'site_title')).get();
 if (!siteTitle) {
   await db.insert(schema.settings).values([
-    { key: 'site_title', value: 'ZyphoraCMS' },
-    { key: 'site_description', value: 'A site powered by ZyphoraCMS' },
+    { key: 'site_title', value: 'Zyphora' },
+    { key: 'site_description', value: 'A site powered by Zyphora' },
   ]);
   console.log('Default settings created.');
 }

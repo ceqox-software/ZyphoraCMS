@@ -1,4 +1,4 @@
-# ZyphoraCMS
+# Zyphora
 
 A self-hosted CMS built on Astro. SSR public site, admin panel at `/admin`, SQLite + Drizzle, session-cookie auth, a TipTap block editor, and a runtime theme system with a hooks API.
 

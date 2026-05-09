@@ -29,10 +29,10 @@ type DemoPost = { title: string; excerpt: string; contentHtml: string; daysAgo: 
 
 const demoPosts: DemoPost[] = [
   {
-    title: 'Welcome to ZyphoraCMS',
+    title: 'Welcome to Zyphora',
     excerpt: 'A self-hosted, WordPress-style CMS built on Astro — fast SSR, SQLite, and a tiny admin you can actually understand.',
     contentHtml: `
-      <p>ZyphoraCMS is a small, opinionated content engine. Posts are written in a TipTap editor, stored in SQLite, sanitized server-side, and rendered through swappable Eta themes.</p>
+      <p>Zyphora is a small, opinionated content engine. Posts are written in a TipTap editor, stored in SQLite, sanitized server-side, and rendered through swappable Eta themes.</p>
       <h2>What ships in the box</h2>
       <ul>
         <li>Server-rendered public site with cookie-session auth for the admin.</li>
@@ -63,7 +63,7 @@ const demoPosts: DemoPost[] = [
     title: 'Themes are runtime, plugins are not',
     excerpt: 'Why uploadable themes get to ship Eta templates but never executable JavaScript — and what that buys us.',
     contentHtml: `
-      <p>Themes in ZyphoraCMS are zip bundles you upload from the admin. Each is a small directory of Eta templates plus a manifest. They're loaded at runtime — there's no rebuild step.</p>
+      <p>Themes in Zyphora are zip bundles you upload from the admin. Each is a small directory of Eta templates plus a manifest. They're loaded at runtime — there's no rebuild step.</p>
       <p>What themes <em>cannot</em> do is execute server-side JavaScript. We don't dynamically import code from theme zips. That'd be remote code execution by design.</p>
       <p>Plugins, when they happen, will be a separate decision with their own threat model. For now, hooks (<code>addFilter</code>, <code>applyFilters</code>, <code>addAction</code>, <code>doAction</code>) are wired by core code only — and that's enough to do useful work.</p>
     `,

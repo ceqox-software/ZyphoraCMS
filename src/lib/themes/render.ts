@@ -77,7 +77,7 @@ export async function renderTheme(input: RenderInput): Promise<Response> {
   }
 
   const [siteTitle, siteDescription] = await Promise.all([
-    getSetting('site_title', 'ZyphoraCMS'),
+    getSetting('site_title', 'Zyphora'),
     getSetting('site_description', ''),
   ]);
 
