@@ -26,14 +26,21 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import * as schema from './schema.ts';
 
+// Resolve the on-disk DB path. Default keeps a fresh checkout self-contained
+// under ./data/; override via env for tests or alternate deploys.
 const DB_PATH = process.env.DATABASE_PATH ?? './data/zyphora.db';
 
+// Ensure the parent directory exists. better-sqlite3 will happily create the
+// file but not the folder, so a fresh clone would otherwise fail to migrate.
 const dir = dirname(DB_PATH);
 if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
+// Open the SQLite database and tune pragmas. See module header for rationale.
 const sqlite = new Database(DB_PATH);
 sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = ON');
 
+// Wrap the raw connection in Drizzle, bound to our schema so query builders
+// stay typed end-to-end.
 export const db = drizzle(sqlite, { schema });
 export { schema };

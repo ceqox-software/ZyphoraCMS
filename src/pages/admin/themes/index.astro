@@ -21,6 +21,10 @@ if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
   const action = String(form.get('_action') ?? '');
 
+  // Single try/catch wraps all three actions. The lib layer throws
+  // human-readable messages for the cases admins care about (zip too big,
+  // theme already installed, can't delete the active theme, etc.) — surface
+  // them verbatim so the user can act on them.
   try {
     if (action === 'activate') {
       const slug = String(form.get('slug') ?? '');

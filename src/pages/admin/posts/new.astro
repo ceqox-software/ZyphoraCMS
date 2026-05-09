@@ -16,6 +16,8 @@ let values: { title: string; slug: string; excerpt: string; contentHtml: string;
 };
 
 if (Astro.request.method === 'POST') {
+  // Run the form through the shared zod schema (also used by the edit page)
+  // so validation rules and error messages stay consistent.
   const form = await Astro.request.formData();
   const parsed = postFormSchema.safeParse({
     title: form.get('title') ?? '',
@@ -26,6 +28,8 @@ if (Astro.request.method === 'POST') {
   });
 
   if (!parsed.success) {
+    // Keep the raw form values around so re-rendering the page restores
+    // what the user typed instead of clearing the form on error.
     error = parsed.error.issues[0]?.message ?? 'Invalid input';
     values = {
       title: String(form.get('title') ?? ''),
@@ -35,6 +39,8 @@ if (Astro.request.method === 'POST') {
       status: form.get('status') === 'published' ? 'published' : 'draft',
     };
   } else {
+    // Insert + redirect (PRG). The edit page picks up `?created=1` and
+    // surfaces a success banner.
     const newId = await createPost(parsed.data, Astro.locals.user!.id);
     return Astro.redirect(`/admin/posts/${newId}?created=1`);
   }

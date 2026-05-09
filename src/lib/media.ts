@@ -43,13 +43,18 @@ export type SavedFile = {
  * surprising onto disk or into URLs.
  */
 export async function saveUpload(file: File): Promise<SavedFile> {
+  // Reject anything outside the size + MIME policy before touching disk.
   if (file.size === 0) throw new Error('Empty file');
   if (file.size > MAX_BYTES) throw new Error('File exceeds 10 MB limit');
   if (!ALLOWED_MIME.has(file.type)) throw new Error(`Unsupported file type: ${file.type}`);
 
+  // Build a safe on-disk name: random UUID + scrubbed extension. The user's
+  // original filename never participates in the path or the public URL.
   const ext = extname(file.name) || '';
   const safeExt = ext.toLowerCase().replace(/[^a-z0-9.]/g, '').slice(0, 10);
   const filename = `${randomUUID()}${safeExt}`;
+
+  // Write the bytes; caller persists the matching `media` row.
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(join(UPLOADS_DIR, filename), buffer);
   return { filename, mimeType: file.type, sizeBytes: file.size };

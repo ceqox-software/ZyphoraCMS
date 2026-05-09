@@ -21,6 +21,8 @@ import type { APIContext } from 'astro';
 import type { User } from '../db/schema.ts';
 
 export const SESSION_COOKIE = 'zyphora_session';
+// 30 days. Matches typical "remember me" defaults; expired sessions are
+// purged lazily by `getUserBySession` so a fresh login always gets a clean TTL.
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
 /** Hash a plaintext password with Argon2id (default parameters from @node-rs/argon2). */

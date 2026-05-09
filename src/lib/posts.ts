@@ -36,6 +36,9 @@ export type PostFormInput = z.infer<typeof postFormSchema>;
 async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
   let slug = base;
   let n = 1;
+  // Probe `base`, `base-2`, `base-3`, … until we find one no other post owns.
+  // Cheap because slugs are unique-indexed; in practice this loop almost
+  // always exits on the first iteration.
   while (true) {
     const existing = await db
       .select({ id: schema.posts.id })
@@ -50,10 +53,12 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
 
 /** Insert a new post. Returns the generated id. Sanitizes the HTML on the way in. */
 export async function createPost(input: PostFormInput, authorId: string) {
+  // Prefer an explicit slug; fall back to deriving one from the title.
   const baseSlug = slugify(input.slug && input.slug.length > 0 ? input.slug : input.title);
   const slug = await uniqueSlug(baseSlug);
   const id = randomUUID();
   const now = new Date();
+  // Stamp publishedAt only when we're publishing now; drafts stay null.
   const publishedAt = input.status === 'published' ? now : null;
 
   await db.insert(schema.posts).values({
@@ -78,9 +83,14 @@ export async function createPost(input: PostFormInput, authorId: string) {
  * published before.
  */
 export async function updatePost(id: string, input: PostFormInput, prevStatus: 'draft' | 'published', prevPublishedAt: Date | null) {
+  // Resolve the slug, excluding this post from the uniqueness check so an
+  // unchanged slug doesn't collide with itself.
   const baseSlug = slugify(input.slug && input.slug.length > 0 ? input.slug : input.title);
   const slug = await uniqueSlug(baseSlug, id);
   const now = new Date();
+  // publishedAt rules: keep the original date if the post was already
+  // published (republishing shouldn't move the date), stamp `now` on first
+  // publish, clear it when reverting to draft.
   const publishedAt =
     input.status === 'published'
       ? prevStatus === 'published' && prevPublishedAt

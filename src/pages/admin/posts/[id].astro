@@ -15,6 +15,9 @@ import { eq } from 'drizzle-orm';
 import { postFormSchema, updatePost } from '../../../lib/posts.ts';
 import { canEditPost } from '../../../lib/auth.ts';
 
+// Resolve the post and run the role check before doing anything else.
+// Missing id / missing post both bounce back to the list silently — we
+// don't want to leak whether a post exists to a user who couldn't edit it.
 const { id } = Astro.params;
 if (!id) return Astro.redirect('/admin/posts');
 
@@ -38,6 +41,8 @@ let values = {
 if (Astro.url.searchParams.get('created') === '1') success = 'Post created.';
 
 if (Astro.request.method === 'POST') {
+  // Same validation flow as the new-post page; on error, restore the form
+  // with the user's typed values so they don't lose work.
   const form = await Astro.request.formData();
   const parsed = postFormSchema.safeParse({
     title: form.get('title') ?? '',
@@ -57,6 +62,8 @@ if (Astro.request.method === 'POST') {
       status: (form.get('status') === 'published' ? 'published' : 'draft'),
     };
   } else {
+    // Pass the previous status + publishedAt so updatePost can preserve the
+    // original publish date when toggling between published states.
     await updatePost(id, parsed.data, post.status, post.publishedAt);
     return Astro.redirect(`/admin/posts/${id}?saved=1`);
   }

@@ -1,3 +1,4 @@
+
 ---
 /**
  * Admin shell — sidebar + main content slot. Wraps every page under `/admin`.
@@ -82,6 +83,10 @@ const sidebarMode = Astro.cookies.get('zyphora_sidebar')?.value === 'rail' ? 'ra
       <slot />
     </main>
     <script is:inline>
+      // Sidebar toggle. Inlined (not a React island) because it touches a
+      // single class+cookie and we want it ready before any hydration runs —
+      // otherwise toggling would briefly flicker. The cookie is read by the
+      // server on next render so the chosen mode survives reloads.
       (() => {
         const btn = document.getElementById('sidebar-toggle');
         if (!btn) return;

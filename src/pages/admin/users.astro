@@ -39,6 +39,8 @@ if (Astro.request.method === 'POST') {
   const action = String(form.get('_action') ?? 'create');
 
   if (action === 'delete') {
+    // Delete: refuse to drop your own row. Cascading session-row delete is
+    // handled by the FK in schema.ts — no separate cleanup needed.
     const id = String(form.get('id') ?? '');
     if (id === Astro.locals.user!.id) {
       error = 'You cannot delete your own account.';
@@ -47,6 +49,8 @@ if (Astro.request.method === 'POST') {
       success = 'User deleted.';
     }
   } else if (action === 'update_role') {
+    // Role change: validate input shape, then block self-demotion so an
+    // admin can't accidentally lock themselves out of this page.
     const parsed = updateRoleSchema.safeParse({
       id: form.get('id'),
       role: form.get('role'),
@@ -60,6 +64,8 @@ if (Astro.request.method === 'POST') {
       success = 'Role updated.';
     }
   } else {
+    // Create: validate the form, reject duplicate emails up-front (the
+    // unique index would catch it, but explicit check gives a nicer error).
     const parsed = userFormSchema.safeParse({
       email: form.get('email'),
       displayName: form.get('displayName'),

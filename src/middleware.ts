@@ -15,6 +15,8 @@ import { defineMiddleware } from 'astro:middleware';
 import { SESSION_COOKIE, getUserBySession, clearSessionCookie } from './lib/auth.ts';
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
+  // Resolve the session cookie into a user record. Default to "anonymous";
+  // we only flip these fields if the cookie validates.
   const sessionId = ctx.cookies.get(SESSION_COOKIE)?.value;
   ctx.locals.user = null;
   ctx.locals.sessionId = null;
@@ -25,15 +27,21 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
       ctx.locals.user = user;
       ctx.locals.sessionId = sessionId;
     } else {
+      // Cookie present but stale/expired — clear it so the browser stops
+      // sending it on every subsequent request.
       clearSessionCookie(ctx);
     }
   }
 
+  // Gate `/admin/*` behind authentication. The login page itself is exempt
+  // (otherwise users could never get in).
   const url = new URL(ctx.request.url);
   const path = url.pathname;
   const needsAuth = path.startsWith('/admin') && path !== '/admin/login';
 
   if (needsAuth && !ctx.locals.user) {
+    // Round-trip the original URL through `?redirect=` so post-login lands
+    // the user back where they were trying to go.
     const redirectTo = encodeURIComponent(path + url.search);
     return ctx.redirect(`/admin/login?redirect=${redirectTo}`);
   }

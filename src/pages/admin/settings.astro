@@ -22,10 +22,15 @@ if (Astro.request.method === 'POST') {
   const action = String(form.get('_action') ?? 'site');
 
   if (action === 'site') {
+    // Persist site-wide title/description. Empty title falls back to the
+    // app name so the public site never renders a nameless header.
     await setSetting('site_title', String(form.get('site_title') ?? '').trim() || 'ZyphoraCMS');
     await setSetting('site_description', String(form.get('site_description') ?? '').trim());
     success = 'Site settings saved.';
   } else if (action === 'password') {
+    // Self-service password change. Order of checks matters: validate the
+    // shape of the new password first (cheap), then confirm it matches,
+    // and only then run the Argon2 verify on the current password (expensive).
     const current = String(form.get('current') ?? '');
     const next = String(form.get('next') ?? '');
     const confirm = String(form.get('confirm') ?? '');

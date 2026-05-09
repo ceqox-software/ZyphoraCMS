@@ -1,4 +1,5 @@
 
+
 /**
  * Drizzle schema — the single source of truth for the SQLite layout.
  *
@@ -14,6 +15,8 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
+// Authoring accounts. `role` gates what the UI exposes and what `lib/auth.ts`
+// allows; `passwordHash` is Argon2 (see lib/auth.ts), never anything else.
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
@@ -23,12 +26,18 @@ export const users = sqliteTable('users', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// Server-side session records keyed by the random token in the
+// `zyphora_session` cookie. Cascades on user delete so removing a user
+// implicitly logs out their open sessions.
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
 });
 
+// Posts — the only content type currently. `contentHtml` is post-sanitization
+// HTML (see lib/sanitize.ts); `slug` is uniquified by lib/posts.ts before
+// insert. Drafts are filtered out of public queries everywhere.
 export const posts = sqliteTable('posts', {
   id: text('id').primaryKey(),
   slug: text('slug').notNull().unique(),
@@ -42,6 +51,9 @@ export const posts = sqliteTable('posts', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// Uploaded files. The bytes themselves live under `public/uploads/`; this
+// table only holds metadata. `filename` is the random UUID name on disk;
+// `originalName` is what the user uploaded.
 export const media = sqliteTable('media', {
   id: text('id').primaryKey(),
   filename: text('filename').notNull(),
@@ -52,11 +64,16 @@ export const media = sqliteTable('media', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// Generic key/value site settings (e.g. `site_title`, `active_theme`).
+// All access goes through lib/settings.ts so upserts stay consistent.
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
 
+// Theme registry — kept in sync with what's actually on disk under `themes/`.
+// `bundled` marks themes that ship in-repo (e.g. `default`) so they can't be
+// uninstalled from the admin UI.
 export const themes = sqliteTable('themes', {
   slug: text('slug').primaryKey(),
   name: text('name').notNull(),
