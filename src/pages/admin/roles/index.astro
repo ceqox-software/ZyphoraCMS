@@ -1,0 +1,143 @@
+---
+/**
+ * Role management — list + create. Editing and deletion live on the per-role
+ * page (`./[slug].astro`). Gated by `manage_roles`; the seeded admin role
+ * ships with that permission. System roles (admin/editor/author) are listed
+ * but flagged as locked — the per-role page refuses to mutate them.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { db, schema } from '../../../db/client.ts';
+import { asc, eq } from 'drizzle-orm';
+import {
+  canManageRoles,
+  PERMISSION_KEYS,
+  PERMISSION_LABELS,
+  type Permission,
+} from '../../../lib/auth.ts';
+import { slugify } from '../../../lib/slug.ts';
+import { z } from 'zod';
+
+if (!canManageRoles(Astro.locals.user)) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const createSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  // Slug is optional; if omitted we derive it from the name.
+  slug: z.string().trim().max(32).optional(),
+  permissions: z.array(z.enum(PERMISSION_KEYS)).default([]),
+});
+
+let error: string | null = null;
+let success: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const parsed = createSchema.safeParse({
+    name: form.get('name'),
+    slug: form.get('slug') || undefined,
+    permissions: form.getAll('permissions'),
+  });
+  if (!parsed.success) {
+    error = parsed.error.issues[0]?.message ?? 'Invalid input.';
+  } else {
+    const slug = slugify(parsed.data.slug || parsed.data.name);
+    const existing = await db.select().from(schema.roles).where(eq(schema.roles.slug, slug)).get();
+    if (existing) {
+      error = `A role with slug "${slug}" already exists.`;
+    } else {
+      await db.insert(schema.roles).values({
+        slug,
+        name: parsed.data.name,
+        permissions: parsed.data.permissions,
+        system: false,
+      });
+      return Astro.redirect(`/admin/roles?created=${encodeURIComponent(slug)}`);
+    }
+  }
+}
+
+if (Astro.url.searchParams.get('created')) {
+  success = `Role "${Astro.url.searchParams.get('created')}" created.`;
+}
+if (Astro.url.searchParams.get('saved')) {
+  success = 'Role updated.';
+}
+if (Astro.url.searchParams.get('deleted')) {
+  success = 'Role deleted.';
+}
+
+const roles = await db.select().from(schema.roles).orderBy(asc(schema.roles.system), asc(schema.roles.name)).all();
+
+// Count users per role so the list can show usage and the per-role page can
+// block deletion when the role is in use. Single grouped query rather than
+// N+1 — drizzle's groupBy returns the slug + count.
+const usageRows = await db
+  .select({ role: schema.users.role })
+  .from(schema.users)
+  .all();
+const usageByRole = new Map<string, number>();
+for (const row of usageRows) {
+  usageByRole.set(row.role, (usageByRole.get(row.role) ?? 0) + 1);
+}
+---
+<AdminLayout title="Roles">
+  <div class="toolbar">
+    <h1 style="margin:0">Roles</h1>
+  </div>
+
+  {success && <div class="alert success">{success}</div>}
+  {error && <div class="alert error">{error}</div>}
+
+  <div class="card" style="margin-bottom:20px">
+    <h2 style="margin-top:0">Create role</h2>
+    <form method="POST" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="field">
+        <label>Name</label>
+        <input class="input" name="name" required maxlength="50" placeholder="e.g. Contributor" />
+      </div>
+      <div class="field">
+        <label>Slug (optional)</label>
+        <input class="input" name="slug" maxlength="32" placeholder="auto-generated from name" />
+      </div>
+      <div class="field" style="grid-column:1 / -1">
+        <label>Permissions</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
+          {PERMISSION_KEYS.map((key: Permission) => (
+            <label style="display:flex;align-items:center;gap:8px;font-weight:400;font-size:0.9rem;color:var(--text);cursor:pointer">
+              <input type="checkbox" name="permissions" value={key} />
+              {PERMISSION_LABELS[key]}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div style="grid-column:1 / -1">
+        <button type="submit" class="btn">Create role</button>
+      </div>
+    </form>
+  </div>
+
+  <table>
+    <thead><tr><th>Name</th><th>Slug</th><th>Permissions</th><th>Users</th><th></th></tr></thead>
+    <tbody>
+      {roles.map((r) => (
+        <tr>
+          <td>
+            {r.name}
+            {r.system && <span class="badge author" style="margin-left:8px">system</span>}
+          </td>
+          <td><code>{r.slug}</code></td>
+          <td style="color:var(--muted);font-size:0.85rem">
+            {r.permissions.length === 0 ? '—' : r.permissions.length === PERMISSION_KEYS.length ? 'all' : `${r.permissions.length} of ${PERMISSION_KEYS.length}`}
+          </td>
+          <td>{usageByRole.get(r.slug) ?? 0}</td>
+          <td>
+            <a href={`/admin/roles/${r.slug}`} class="btn secondary" style="font-size:0.8rem;padding:4px 8px">
+              {r.system ? 'View' : 'Edit'}
+            </a>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</AdminLayout>

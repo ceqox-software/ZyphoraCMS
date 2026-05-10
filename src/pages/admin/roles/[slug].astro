@@ -1,0 +1,145 @@
+---
+/**
+ * Per-role edit + delete page.
+ *
+ * System roles (admin/editor/author) are rendered read-only — both the form
+ * and the delete button refuse to mutate them. This is the safety net that
+ * prevents an admin from removing `manage_roles` from their own role and
+ * locking everyone out of the CMS.
+ *
+ * Deletion is also blocked when any user is still assigned to the role:
+ * the UI disables the button and the POST handler refuses, telling the
+ * admin to reassign users first.
+ */
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { db, schema } from '../../../db/client.ts';
+import { eq } from 'drizzle-orm';
+import {
+  canManageRoles,
+  PERMISSION_KEYS,
+  PERMISSION_LABELS,
+  type Permission,
+} from '../../../lib/auth.ts';
+import { z } from 'zod';
+
+if (!canManageRoles(Astro.locals.user)) {
+  return new Response('Forbidden', { status: 403 });
+}
+
+const slug = Astro.params.slug ?? '';
+const role = await db.select().from(schema.roles).where(eq(schema.roles.slug, slug)).get();
+if (!role) {
+  return new Response('Not Found', { status: 404 });
+}
+
+const usersWithRole = await db
+  .select({ id: schema.users.id })
+  .from(schema.users)
+  .where(eq(schema.users.role, slug))
+  .all();
+const userCount = usersWithRole.length;
+
+const updateSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  permissions: z.array(z.enum(PERMISSION_KEYS)).default([]),
+});
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('_action') ?? 'update');
+
+  if (role.system) {
+    error = 'System roles cannot be modified.';
+  } else if (action === 'delete') {
+    if (userCount > 0) {
+      error = `Cannot delete: ${userCount} user${userCount === 1 ? '' : 's'} still assigned. Reassign them first.`;
+    } else {
+      await db.delete(schema.roles).where(eq(schema.roles.slug, slug));
+      return Astro.redirect('/admin/roles?deleted=1');
+    }
+  } else {
+    const parsed = updateSchema.safeParse({
+      name: form.get('name'),
+      permissions: form.getAll('permissions'),
+    });
+    if (!parsed.success) {
+      error = parsed.error.issues[0]?.message ?? 'Invalid input.';
+    } else {
+      await db.update(schema.roles)
+        .set({ name: parsed.data.name, permissions: parsed.data.permissions })
+        .where(eq(schema.roles.slug, slug));
+      return Astro.redirect('/admin/roles?saved=1');
+    }
+  }
+}
+
+const currentPerms = new Set(role.permissions);
+---
+<AdminLayout title={`Role: ${role.name}`}>
+  <div class="toolbar">
+    <h1 style="margin:0">{role.name}</h1>
+    <a href="/admin/roles" class="btn secondary">Back to roles</a>
+  </div>
+
+  {error && <div class="alert error">{error}</div>}
+
+  {role.system && (
+    <div class="alert" style="background:var(--panel-alt);color:var(--muted);border:1px solid var(--border)">
+      This is a system role — its name and permissions are locked to keep the
+      CMS recoverable. Create a custom role if you need different permissions.
+    </div>
+  )}
+
+  <div class="card">
+    <form method="POST">
+      <div class="field">
+        <label>Name</label>
+        <input class="input" name="name" value={role.name} required maxlength="50" disabled={role.system} />
+      </div>
+      <div class="field">
+        <label>Slug</label>
+        <input class="input" value={role.slug} disabled />
+      </div>
+      <div class="field">
+        <label>Permissions</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px">
+          {PERMISSION_KEYS.map((key: Permission) => (
+            <label style={`display:flex;align-items:center;gap:8px;font-weight:400;font-size:0.9rem;color:var(--text);${role.system ? 'opacity:0.7;cursor:not-allowed' : 'cursor:pointer'}`}>
+              <input
+                type="checkbox"
+                name="permissions"
+                value={key}
+                checked={currentPerms.has(key)}
+                disabled={role.system}
+              />
+              {PERMISSION_LABELS[key]}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div class="field" style="color:var(--muted);font-size:0.85rem">
+        {userCount === 0 ? 'No users currently have this role.' : `${userCount} user${userCount === 1 ? '' : 's'} currently ${userCount === 1 ? 'has' : 'have'} this role.`}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="submit" class="btn" disabled={role.system}>Save changes</button>
+      </div>
+    </form>
+  </div>
+
+  {!role.system && (
+    <div class="card" style="margin-top:20px">
+      <h2 style="margin-top:0">Delete role</h2>
+      <p style="color:var(--muted);font-size:0.9rem">
+        {userCount > 0
+          ? `Cannot delete: ${userCount} user${userCount === 1 ? '' : 's'} still assigned to this role. Reassign them first.`
+          : 'No users are assigned. This role can be safely deleted.'}
+      </p>
+      <form method="POST" onsubmit="return confirm('Delete this role? This cannot be undone.')">
+        <input type="hidden" name="_action" value="delete" />
+        <button type="submit" class="btn danger" disabled={userCount > 0}>Delete role</button>
+      </form>
+    </div>
+  )}
+</AdminLayout>

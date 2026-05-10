@@ -20,6 +20,43 @@ import { eq, lt } from 'drizzle-orm';
 import type { APIContext } from 'astro';
 import type { User } from '../db/schema.ts';
 
+/**
+ * The full set of permission keys the CMS understands. Adding a new entry
+ * here is the only place permissions are declared — `lib/auth.ts` checks
+ * against these strings, the admin UI renders a checkbox per entry, and
+ * `roles.permissions` stores any subset of them. Removing or renaming an
+ * entry is a breaking change for stored role rows.
+ */
+export const PERMISSION_KEYS = [
+  'manage_users',
+  'manage_roles',
+  'manage_posts_any',
+  'manage_posts_own',
+  'manage_media',
+  'manage_themes',
+  'manage_settings',
+] as const;
+export type Permission = typeof PERMISSION_KEYS[number];
+
+/** Human-readable labels for the role-edit checkboxes. */
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  manage_users: 'Manage users',
+  manage_roles: 'Manage roles',
+  manage_posts_any: 'Edit any post',
+  manage_posts_own: 'Edit own posts',
+  manage_media: 'Manage media',
+  manage_themes: 'Manage themes',
+  manage_settings: 'Manage site settings',
+};
+
+/**
+ * The user record as it lives on `Astro.locals.user`: the DB row plus the
+ * resolved permission set. Middleware (via `getUserBySession`) joins the
+ * user's role row once per request so downstream pages can check
+ * `hasPermission(...)` without further queries.
+ */
+export type SessionUser = User & { permissions: ReadonlySet<string> };
+
 export const SESSION_COOKIE = 'zyphora_session';
 // 30 days. Matches typical "remember me" defaults; expired sessions are
 // purged lazily by `getUserBySession` so a fresh login always gets a clean TTL.
@@ -55,12 +92,23 @@ export async function deleteSession(id: string) {
  * Resolve a session token to its user. Returns null for unknown or expired
  * sessions; expired rows are deleted as a side effect so the table doesn't
  * grow forever even without a separate sweeper running.
+ *
+ * Joins the role row in the same query so the returned `SessionUser` carries
+ * its resolved permission set — pages can then call `hasPermission` without
+ * a follow-up DB hit. A left-join is used so a user whose role slug went
+ * stale (role deleted out from under them) still resolves with an empty
+ * permission set instead of failing the lookup outright.
  */
-export async function getUserBySession(sessionId: string): Promise<User | null> {
+export async function getUserBySession(sessionId: string): Promise<SessionUser | null> {
   const row = await db
-    .select({ user: schema.users, session: schema.sessions })
+    .select({
+      user: schema.users,
+      session: schema.sessions,
+      rolePermissions: schema.roles.permissions,
+    })
     .from(schema.sessions)
     .innerJoin(schema.users, eq(schema.users.id, schema.sessions.userId))
+    .leftJoin(schema.roles, eq(schema.roles.slug, schema.users.role))
     .where(eq(schema.sessions.id, sessionId))
     .get();
 
@@ -69,7 +117,8 @@ export async function getUserBySession(sessionId: string): Promise<User | null> 
     await deleteSession(sessionId);
     return null;
   }
-  return row.user;
+  const permissions: ReadonlySet<string> = new Set(row.rolePermissions ?? []);
+  return { ...row.user, permissions };
 }
 
 /**
@@ -97,22 +146,30 @@ export function clearSessionCookie(ctx: APIContext) {
   ctx.cookies.delete(SESSION_COOKIE, { path: '/' });
 }
 
-export type Role = 'admin' | 'editor' | 'author';
+/** True iff the user's role grants `key`. Anonymous → always false. */
+export function hasPermission(user: SessionUser | null, key: Permission): boolean {
+  return !!user && user.permissions.has(key);
+}
 
-/** Only admins can create/modify users. */
-export function canManageUsers(user: User | null): boolean {
-  return user?.role === 'admin';
+/** Gate: the user can create/modify users. Backed by `manage_users`. */
+export function canManageUsers(user: SessionUser | null): boolean {
+  return hasPermission(user, 'manage_users');
+}
+
+/** Gate: the user can create/modify custom roles. Backed by `manage_roles`. */
+export function canManageRoles(user: SessionUser | null): boolean {
+  return hasPermission(user, 'manage_roles');
 }
 
 /**
- * Editorial authorization for posts.
- * - admins and editors can edit any post
- * - authors can edit only their own
+ * Editorial authorization for a specific post.
+ * - `manage_posts_any` → can edit any post
+ * - `manage_posts_own` + ownership → can edit only their own
  */
-export function canEditPost(user: User | null, post: { authorId: string }): boolean {
+export function canEditPost(user: SessionUser | null, post: { authorId: string }): boolean {
   if (!user) return false;
-  if (user.role === 'admin' || user.role === 'editor') return true;
-  return user.id === post.authorId;
+  if (user.permissions.has('manage_posts_any')) return true;
+  return user.permissions.has('manage_posts_own') && user.id === post.authorId;
 }
 
 /** Centralized so we can swap the ID strategy (e.g. ULID) in one place later. */

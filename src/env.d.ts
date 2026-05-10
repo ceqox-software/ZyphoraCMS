@@ -7,7 +7,7 @@
  */
 declare namespace App {
   interface Locals {
-    user: import('./db/schema.ts').User | null;
+    user: import('./lib/auth.ts').SessionUser | null;
     sessionId: string | null;
   }
 }
