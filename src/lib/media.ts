@@ -10,7 +10,7 @@
  * MIME allowlist + 10 MB cap are intentionally simple. If you grow this list,
  * keep an eye on SVG (it can carry script — DOMPurify is not run on uploads).
  */
-import { existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { writeFile, unlink } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -25,7 +25,8 @@ const ALLOWED_MIME = new Set([
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
+// `recursive: true` makes mkdirSync idempotent — no error if the dir exists.
+mkdirSync(UPLOADS_DIR, { recursive: true });
 
 export type SavedFile = {
   filename: string;

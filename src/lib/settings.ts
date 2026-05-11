@@ -17,12 +17,10 @@ export async function getSetting(key: string, fallback = ''): Promise<string> {
   return row?.value ?? fallback;
 }
 
-/** Upsert a setting. Inserts if the key is new, updates if it already exists. */
+/** Upsert a setting. One atomic statement via SQLite's `ON CONFLICT`. */
 export async function setSetting(key: string, value: string) {
-  const existing = await db.select().from(schema.settings).where(eq(schema.settings.key, key)).get();
-  if (existing) {
-    await db.update(schema.settings).set({ value }).where(eq(schema.settings.key, key));
-  } else {
-    await db.insert(schema.settings).values({ key, value });
-  }
+  await db
+    .insert(schema.settings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: schema.settings.key, set: { value } });
 }

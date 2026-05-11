@@ -15,7 +15,9 @@ export function slugify(input: string): string {
   return input
     .toLowerCase()
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
+    // Combining diacritical marks block (U+0300–U+036F) — written as explicit
+    // escapes so the regex stays correct regardless of source-file encoding.
+    .replace(/[\u0300-\u036f]/gu, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80) || 'untitled';

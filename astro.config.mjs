@@ -12,3 +12,4 @@ export default defineConfig({
     ssr: { external: ['better-sqlite3'] },
   },
 });
+
