@@ -15,14 +15,30 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
-// Authoring accounts. `role` gates what the UI exposes and what `lib/auth.ts`
-// allows; `passwordHash` is Argon2 (see lib/auth.ts), never anything else.
+// Authoring accounts. `role` is a slug into the `roles` table — no enum here
+// so admins can define custom roles. Validity is enforced at the application
+// layer (the admin UI only exposes existing role slugs); we deliberately skip
+// a hard FK to keep the migration that introduced the roles table simple.
+// `passwordHash` is Argon2 (see lib/auth.ts), never anything else.
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
-  role: text('role', { enum: ['admin', 'editor', 'author'] }).notNull().default('author'),
+  role: text('role').notNull().default('author'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
+// Role definitions. `permissions` is a JSON-encoded array of permission keys
+// (see PERMISSION_KEYS in lib/auth.ts) — `text({ mode: 'json' })` handles the
+// (de)serialization. `system: true` marks the three built-in roles so the
+// admin UI prevents them from being renamed or deleted (which would otherwise
+// risk locking everyone out of the CMS).
+export const roles = sqliteTable('roles', {
+  slug: text('slug').primaryKey(),
+  name: text('name').notNull(),
+  permissions: text('permissions', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  system: integer('system', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
@@ -93,3 +109,5 @@ export type NewPost = typeof posts.$inferInsert;
 export type Media = typeof media.$inferSelect;
 export type Theme = typeof themes.$inferSelect;
 export type NewTheme = typeof themes.$inferInsert;
+export type Role = typeof roles.$inferSelect;
+export type NewRole = typeof roles.$inferInsert;
