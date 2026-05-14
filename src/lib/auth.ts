@@ -172,6 +172,16 @@ export function canEditPost(user: SessionUser | null, post: { authorId: string }
   return user.permissions.has('manage_posts_own') && user.id === post.authorId;
 }
 
+/**
+ * Moderation rights for the comment queue. Gated on `manage_posts_any` —
+ * if you can edit any post, you can moderate the discussion on it. Authors
+ * (own-posts-only) deliberately don't qualify: queue access would surface
+ * every commenter's email and IP across every post in the system.
+ */
+export function canModerateComments(user: SessionUser | null): boolean {
+  return hasPermission(user, 'manage_posts_any');
+}
+
 /** Centralized so we can swap the ID strategy (e.g. ULID) in one place later. */
 export function newUserId(): string {
   return randomUUID();
