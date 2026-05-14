@@ -25,6 +25,10 @@ export const postFormSchema = z.object({
   contentHtml: z.string().default(''),
   status: z.enum(['draft', 'published']).default('draft'),
   category: z.enum(['news', 'travel', 'gadgets', 'reviews']).default('news'),
+  // HTML checkboxes only submit when checked; the admin pages translate
+  // "field present" → true, "absent" → false before handing off to zod, so
+  // the schema just needs to accept the resulting boolean.
+  commentsEnabled: z.boolean().default(true),
 });
 
 export type PostFormInput = z.infer<typeof postFormSchema>;
@@ -70,6 +74,7 @@ export async function createPost(input: PostFormInput, authorId: string) {
     contentHtml: sanitizeHtml(input.contentHtml),
     status: input.status,
     category: input.category,
+    commentsEnabled: input.commentsEnabled,
     authorId,
     publishedAt,
     createdAt: now,
@@ -109,6 +114,7 @@ export async function updatePost(id: string, input: PostFormInput, prevStatus: '
       contentHtml: sanitizeHtml(input.contentHtml),
       status: input.status,
       category: input.category,
+      commentsEnabled: input.commentsEnabled,
       publishedAt,
       updatedAt: now,
     })

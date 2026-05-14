@@ -37,6 +37,7 @@ let values = {
   contentHtml: post.contentHtml,
   status: post.status,
   category: post.category,
+  commentsEnabled: post.commentsEnabled,
 };
 
 if (Astro.url.searchParams.get('created') === '1') success = 'Post created.';
@@ -45,6 +46,9 @@ if (Astro.request.method === 'POST') {
   // Same validation flow as the new-post page; on error, restore the form
   // with the user's typed values so they don't lose work.
   const form = await Astro.request.formData();
+  // Unchecked checkboxes are omitted from form data entirely — presence
+  // alone means checked.
+  const commentsEnabled = form.get('commentsEnabled') !== null;
   const parsed = postFormSchema.safeParse({
     title: form.get('title') ?? '',
     slug: form.get('slug') ?? '',
@@ -52,6 +56,7 @@ if (Astro.request.method === 'POST') {
     contentHtml: form.get('contentHtml') ?? '',
     status: form.get('status') ?? 'draft',
     category: form.get('category') ?? 'news',
+    commentsEnabled,
   });
 
   if (!parsed.success) {
@@ -64,6 +69,7 @@ if (Astro.request.method === 'POST') {
       contentHtml: String(form.get('contentHtml') ?? ''),
       status: (form.get('status') === 'published' ? 'published' : 'draft'),
       category: (['news', 'travel', 'gadgets', 'reviews'].includes(rawCategory) ? rawCategory : 'news') as 'news' | 'travel' | 'gadgets' | 'reviews',
+      commentsEnabled,
     };
   } else {
     // Pass the previous status + publishedAt so updatePost can preserve the
@@ -120,6 +126,12 @@ if (Astro.url.searchParams.get('saved') === '1') success = 'Post saved.';
           <option value="gadgets" selected={values.category === 'gadgets'}>Gadgets</option>
           <option value="reviews" selected={values.category === 'reviews'}>Reviews</option>
         </select>
+      </div>
+      <div class="field">
+        <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" name="commentsEnabled" checked={values.commentsEnabled} />
+          <span>Allow comments on this post</span>
+        </label>
       </div>
     </div>
     <button type="submit" class="btn">Save changes</button>

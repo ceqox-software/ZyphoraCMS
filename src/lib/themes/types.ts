@@ -50,6 +50,10 @@ export type SitePost = {
   contentHtml?: string;
   publishedAt: Date | null;
   authorName: string | null;
+  // Per-post comment toggle. Only populated on the single-post view; list
+  // views omit it. Themes should hide the comment form and the existing-
+  // comments section when false; the route enforces it server-side either way.
+  commentsEnabled?: boolean;
 };
 
 /**

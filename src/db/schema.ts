@@ -62,6 +62,12 @@ export const posts = sqliteTable('posts', {
   contentHtml: text('content_html').notNull().default(''),
   status: text('status', { enum: ['draft', 'published'] }).notNull().default('draft'),
   category: text('category', { enum: ['news', 'travel', 'gadgets', 'reviews'] }).notNull().default('news'),
+  // Per-post comment toggle. Defaults to true so existing posts and the
+  // common case ("comments on") need no extra clicks; flip to false in the
+  // admin to suppress the comment form and hide the section from templates.
+  // Existing approved comments are kept in the DB regardless — disabling is
+  // a display/intake switch, not a delete.
+  commentsEnabled: integer('comments_enabled', { mode: 'boolean' }).notNull().default(true),
   authorId: text('author_id').notNull().references(() => users.id),
   publishedAt: integer('published_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),

@@ -33,6 +33,7 @@ const row = await db
     excerpt: schema.posts.excerpt,
     contentHtml: schema.posts.contentHtml,
     publishedAt: schema.posts.publishedAt,
+    commentsEnabled: schema.posts.commentsEnabled,
     authorName: schema.users.displayName,
   })
   .from(schema.posts)
@@ -45,6 +46,16 @@ if (!row) {
 }
 
 let commentForm: CommentFormState | undefined;
+
+// Hard-stop any comment submission when the author has disabled comments on
+// this post. The form is hidden in the template too, but a stale tab (or a
+// scripted POST) shouldn't be able to bypass the toggle.
+if (Astro.request.method === 'POST' && !row.commentsEnabled) {
+  return new Response('Comments are disabled for this post.', {
+    status: 403,
+    headers: { 'content-type': 'text/plain' },
+  });
+}
 
 if (Astro.request.method === 'POST') {
   const form = await Astro.request.formData();
@@ -84,7 +95,9 @@ if (Astro.request.method === 'POST') {
   };
 }
 
-const comments = await getApprovedComments(row.id);
+// Skip the fetch entirely when comments are disabled — disabling hides both
+// the form and any previously approved comments, so there's nothing to render.
+const comments = row.commentsEnabled ? await getApprovedComments(row.id) : [];
 const commentSubmitted = Astro.url.searchParams.get('comment') === 'pending';
 
 const escapeHtml = (s: string) =>
