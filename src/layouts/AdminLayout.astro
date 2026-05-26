@@ -13,6 +13,7 @@
 import '../styles/admin.css';
 import { canManageUsers, canManageRoles, canModerateComments } from '../lib/auth.ts';
 import { getCommentCounts } from '../lib/comments.ts';
+import { VERSION } from '../lib/version.ts';
 const { user } = Astro.locals;
 const { title = 'Admin' } = Astro.props as { title?: string };
 const path = Astro.url.pathname;
@@ -120,6 +121,10 @@ const pendingComments = canModerateComments(user) ? (await getCommentCounts()).p
             <path d="M15 6l-6 6 6 6"/>
           </svg>
         </button>
+      </div>
+      <div class="sidebar-version" title={`Zyphora ${VERSION}`}>
+        <span class="sidebar-version-label">Zyphora</span>
+        <span class="sidebar-version-num">v{VERSION}</span>
       </div>
     </aside>
     <main class="content">
