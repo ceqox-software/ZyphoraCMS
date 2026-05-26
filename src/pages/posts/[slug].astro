@@ -17,6 +17,7 @@ import { eq, and } from 'drizzle-orm';
 import { renderTheme } from '../../lib/themes/render.ts';
 import { commentFormSchema, createComment, getApprovedComments } from '../../lib/comments.ts';
 import { getSetting } from '../../lib/settings.ts';
+import { getRecaptchaConfig, verifyRecaptchaToken } from '../../lib/recaptcha.ts';
 import type { CommentFormState } from '../../lib/themes/types.ts';
 
 const { slug } = Astro.params;
@@ -79,37 +80,59 @@ if (Astro.request.method === 'POST') {
     content: String(form.get('content') ?? ''),
   };
   const parsed = commentFormSchema.safeParse(raw);
-  if (parsed.success) {
-    // Resolve the effective moderation policy: the per-post override wins
-    // when set, otherwise fall back to the site-wide setting (default on).
-    const siteRequiresModeration = (await getSetting('require_comment_moderation', '1')) === '1';
-    const moderate = row.moderateComments ?? siteRequiresModeration;
-    const { status } = await createComment(parsed.data, {
-      ipAddress: Astro.clientAddress,
-      userAgent: Astro.request.headers.get('user-agent') ?? undefined,
-      initialStatus: moderate ? 'pending' : 'approved',
-    });
-    // Redirect after successful POST so a refresh doesn't double-submit.
-    // Banner text branches on whether the comment was auto-approved.
-    return Astro.redirect(`/posts/${row.slug}?comment=${status}#comments`);
-  }
 
-  // Re-render the page with the user's previous values and a field-keyed
-  // error map so the template can highlight the offending fields.
-  const errors: Record<string, string> = {};
-  for (const issue of parsed.error.issues) {
-    const key = String(issue.path[0] ?? '_');
-    if (!errors[key]) errors[key] = issue.message;
-  }
-  commentForm = {
-    values: {
-      authorName: raw.authorName,
-      authorEmail: raw.authorEmail,
-      authorUrl: raw.authorUrl,
-      content: raw.content,
-    },
-    errors,
+  // Build the sticky-form payload up-front so both validation and reCAPTCHA
+  // failure paths can share the same shape.
+  const stickyValues = {
+    authorName: raw.authorName,
+    authorEmail: raw.authorEmail,
+    authorUrl: raw.authorUrl,
+    content: raw.content,
   };
+
+  if (parsed.success) {
+    // reCAPTCHA gate runs only after schema validation passes — we don't want
+    // to burn a verify-token round-trip on requests that would have failed
+    // validation anyway. When the admin hasn't configured keys, `enabled` is
+    // false and we skip the verify entirely (opt-in spam protection).
+    const recaptcha = await getRecaptchaConfig();
+    if (recaptcha.enabled) {
+      // The widget injects this hidden field into the form on success; an
+      // unsolved checkbox (or a bot scripting the POST) leaves it empty.
+      const token = String(form.get('g-recaptcha-response') ?? '');
+      const ok = await verifyRecaptchaToken(token, recaptcha.secretKey!, Astro.clientAddress);
+      if (!ok) {
+        commentForm = {
+          values: stickyValues,
+          errors: { recaptcha: 'reCAPTCHA verification failed. Please try again.' },
+        };
+      }
+    }
+
+    if (!commentForm) {
+      // Resolve the effective moderation policy: the per-post override wins
+      // when set, otherwise fall back to the site-wide setting (default on).
+      const siteRequiresModeration = (await getSetting('require_comment_moderation', '1')) === '1';
+      const moderate = row.moderateComments ?? siteRequiresModeration;
+      const { status } = await createComment(parsed.data, {
+        ipAddress: Astro.clientAddress,
+        userAgent: Astro.request.headers.get('user-agent') ?? undefined,
+        initialStatus: moderate ? 'pending' : 'approved',
+      });
+      // Redirect after successful POST so a refresh doesn't double-submit.
+      // Banner text branches on whether the comment was auto-approved.
+      return Astro.redirect(`/posts/${row.slug}?comment=${status}#comments`);
+    }
+  } else {
+    // Re-render the page with the user's previous values and a field-keyed
+    // error map so the template can highlight the offending fields.
+    const errors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0] ?? '_');
+      if (!errors[key]) errors[key] = issue.message;
+    }
+    commentForm = { values: stickyValues, errors };
+  }
 }
 
 // Skip the fetch entirely when comments are disabled — disabling hides both

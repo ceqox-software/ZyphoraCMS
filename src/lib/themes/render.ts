@@ -19,6 +19,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveActiveTheme } from './registry.ts';
 import { getSetting } from '../settings.ts';
+import { getRecaptchaConfig } from '../recaptcha.ts';
 import { applyFilters, doAction } from './hooks.ts';
 import { lintTemplatesDir, formatLintIssues, type EtaLintIssue } from './lint.ts';
 import type {
@@ -156,12 +157,16 @@ export async function renderTheme(input: RenderInput): Promise<Response> {
   // .eta file and line. Templates are small; the cost is negligible.
   ensureThemeLintsClean(theme);
 
-  const [siteTitle, siteDescription, favicon] = await Promise.all([
+  const [siteTitle, siteDescription, favicon, recaptcha] = await Promise.all([
     getSetting('site_title', 'Zyphora'),
     getSetting('site_description', ''),
     // Empty string == "no favicon configured" so the template can drop the
     // <link rel="icon"> rather than emit a broken href.
     getSetting('favicon_url', ''),
+    // The site key is safe to expose to every template; the secret is read
+    // by `getRecaptchaConfig` too but stays in the lib/recaptcha.ts module
+    // and never reaches the context object.
+    getRecaptchaConfig(),
   ]);
 
   // Filters let core code (and, eventually, plugins) transform values before
@@ -217,6 +222,10 @@ export async function renderTheme(input: RenderInput): Promise<Response> {
       : null,
     authForm: input.authForm,
     authRedirect: input.authRedirect,
+    // Only expose the site key when reCAPTCHA is fully configured (both keys
+    // set). A site key without a matching secret would render a widget that
+    // can't actually verify, so we treat that as disabled too.
+    recaptchaSiteKey: recaptcha.enabled ? recaptcha.siteKey : null,
     year: new Date().getFullYear(),
   };
 

@@ -12,6 +12,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { getSetting, setSetting } from '../../lib/settings.ts';
 import { hashPassword, verifyPassword } from '../../lib/auth.ts';
 import { saveUpload, deleteUpload, publicUrl } from '../../lib/media.ts';
+import { getRecaptchaConfig } from '../../lib/recaptcha.ts';
 import { db, schema } from '../../db/client.ts';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -81,6 +82,25 @@ if (Astro.request.method === 'POST') {
     }
     await setSetting('favicon_url', '');
     success = 'Favicon removed.';
+  } else if (action === 'recaptcha') {
+    // Spam protection (Google reCAPTCHA v2). Site key is safe to echo back in
+    // the form (it's exposed to the browser anyway when the widget renders);
+    // the secret key is write-only — we never re-emit it, and an empty input
+    // means "leave the current value alone" rather than "wipe it." Clearing
+    // the secret is a separate explicit action below.
+    await setSetting('recaptcha_site_key', String(form.get('recaptcha_site_key') ?? '').trim());
+    const newSecret = String(form.get('recaptcha_secret_key') ?? '').trim();
+    if (newSecret.length > 0) {
+      await setSetting('recaptcha_secret_key', newSecret);
+    }
+    success = 'Spam protection settings saved.';
+  } else if (action === 'recaptcha-clear') {
+    // Disable reCAPTCHA entirely. Wiping both keys is enough — the verifier
+    // treats either being empty as "disabled," so the comment form falls back
+    // to the un-gated version on the next render.
+    await setSetting('recaptcha_site_key', '');
+    await setSetting('recaptcha_secret_key', '');
+    success = 'Spam protection disabled.';
   } else if (action === 'password') {
     // Self-service password change. Order of checks matters: validate the
     // shape of the new password first (cheap), then confirm it matches,
@@ -109,6 +129,11 @@ const siteDescription = await getSetting('site_description', '');
 // fallback, which matches the historical behavior (every comment queued).
 const requireModeration = (await getSetting('require_comment_moderation', '1')) === '1';
 const faviconUrl = await getSetting('favicon_url', '');
+// Read recaptcha state for the form: we echo the site key but only signal
+// whether a secret exists — the secret itself never leaves the server.
+const recaptcha = await getRecaptchaConfig();
+const recaptchaSiteKey = recaptcha.siteKey ?? '';
+const recaptchaSecretConfigured = recaptcha.secretKey !== null;
 ---
 <AdminLayout title="Settings">
   <h1>Settings</h1>
@@ -163,6 +188,39 @@ const faviconUrl = await getSetting('favicon_url', '');
       <form method="POST" style="margin-top:12px" onsubmit="return confirm('Remove favicon?')">
         <input type="hidden" name="_action" value="favicon-remove" />
         <button type="submit" class="btn danger" style="font-size:0.85rem">Remove favicon</button>
+      </form>
+    )}
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <h2 style="margin-top:0">Spam protection</h2>
+    <p style="color:var(--muted);margin-top:0">
+      Add Google reCAPTCHA v2 ("I'm not a robot" checkbox) to the public comment form.
+      Get keys at <a href="https://www.google.com/recaptcha/admin" target="_blank" rel="noopener">google.com/recaptcha/admin</a> —
+      choose <strong>reCAPTCHA v2 → "I'm not a robot" Checkbox</strong>.
+      Leave both fields empty to disable.
+    </p>
+    <div style="margin-bottom:12px;font-size:0.85rem;color:var(--muted)">
+      Status: {recaptcha.enabled ? <strong style="color:var(--success, #16a34a)">Enabled</strong> : <strong>Disabled</strong>}
+    </div>
+    <form method="POST">
+      <input type="hidden" name="_action" value="recaptcha" />
+      <div class="field">
+        <label>Site key</label>
+        <input class="input" name="recaptcha_site_key" value={recaptchaSiteKey} placeholder="6Lc..." autocomplete="off" />
+        <small style="display:block;margin-top:6px;opacity:0.75">Public — shown in the comment form HTML.</small>
+      </div>
+      <div class="field">
+        <label>Secret key {recaptchaSecretConfigured && <span style="font-weight:normal;color:var(--muted)">— configured (leave blank to keep)</span>}</label>
+        <input class="input" type="password" name="recaptcha_secret_key" placeholder={recaptchaSecretConfigured ? '••••••••' : '6Lc...'} autocomplete="off" />
+        <small style="display:block;margin-top:6px;opacity:0.75">Server-only. Used to verify each submission with Google.</small>
+      </div>
+      <button class="btn" type="submit">Save</button>
+    </form>
+    {(recaptcha.siteKey || recaptcha.secretKey) && (
+      <form method="POST" style="margin-top:12px" onsubmit="return confirm('Disable reCAPTCHA and clear both keys?')">
+        <input type="hidden" name="_action" value="recaptcha-clear" />
+        <button type="submit" class="btn danger" style="font-size:0.85rem">Disable & clear keys</button>
       </form>
     )}
   </div>

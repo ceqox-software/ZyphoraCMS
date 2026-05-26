@@ -180,6 +180,16 @@ export type RenderContext = {
    */
   commentSubmitted?: 'pending' | 'approved' | null;
   /**
+   * Google reCAPTCHA v2 site key, or `null` when reCAPTCHA isn't configured.
+   * Themes that want spam protection render the widget — typically
+   * `<div class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>"></div>`
+   * plus the `https://www.google.com/recaptcha/api.js` script — only when
+   * this is non-null. The server-side verifier also short-circuits when keys
+   * are missing, so a theme that ignores this field simply gets unprotected
+   * comments (the historical behavior).
+   */
+  recaptchaSiteKey: string | null;
+  /**
    * Present on the search route. `query` is the trimmed user input; `total`
    * lets templates show "N results for X" without re-counting `posts.length`.
    * Themes that ship a `search.eta` use this; themes without one fall back to

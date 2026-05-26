@@ -85,8 +85,17 @@
             <textarea id="comment-content" name="content" rows="5" required maxlength="5000"><%= vals.content || '' %></textarea>
             <% if (errs.content) { %><small class="comment-field-error"><%= errs.content %></small><% } %>
           </div>
+          <% if (recaptchaSiteKey) { %>
+            <div class="comment-field">
+              <div class="g-recaptcha" data-sitekey="<%= recaptchaSiteKey %>"></div>
+              <% if (errs.recaptcha) { %><small class="comment-field-error"><%= errs.recaptcha %></small><% } %>
+            </div>
+          <% } %>
           <button type="submit" class="comment-submit">Post comment</button>
         </form>
+        <% if (recaptchaSiteKey) { %>
+          <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        <% } %>
       </section>
       <% } %>
 
