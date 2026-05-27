@@ -1,5 +1,5 @@
 /**
- * Console boot banner — prints a colorful "Stefan Machhammer" watermark
+ * Console boot banner — prints a colorful "Zyphora CMS" watermark
  * once, at server startup.
  *
  * Wired in as a side-effect import from `src/middleware.ts`, which Astro
@@ -85,33 +85,35 @@ function printBanner(): void {
   const pink: [number, number, number] = [255, 71, 195];
   const cyan: [number, number, number] = [88, 217, 255];
 
-  // "STEFAN" in the ANSI Shadow figlet font, hand-pasted so we don't have
+  // "ZYPHORA" in the ANSI Shadow figlet font, hand-pasted so we don't have
   // to ship a runtime figlet dependency just for a startup banner. Each
   // entry is one row of the six-row glyph.
-  const stefan = [
-    '███████╗████████╗███████╗███████╗ █████╗ ███╗   ██╗',
-    '██╔════╝╚══██╔══╝██╔════╝██╔════╝██╔══██╗████╗  ██║',
-    '███████╗   ██║   █████╗  █████╗  ███████║██╔██╗ ██║',
-    '╚════██║   ██║   ██╔══╝  ██╔══╝  ██╔══██║██║╚██╗██║',
-    '███████║   ██║   ███████╗██║     ██║  ██║██║ ╚████║',
-    '╚══════╝   ╚═╝   ╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝',
+  const zyphora = [
+    '███████╗██╗   ██╗██████╗ ██╗  ██╗ ██████╗ ██████╗  █████╗ ',
+    '╚══███╔╝╚██╗ ██╔╝██╔══██╗██║  ██║██╔═══██╗██╔══██╗██╔══██╗',
+    '  ███╔╝  ╚████╔╝ ██████╔╝███████║██║   ██║██████╔╝███████║',
+    ' ███╔╝    ╚██╔╝  ██╔═══╝ ██╔══██║██║   ██║██╔══██╗██╔══██║',
+    '███████╗   ██║   ██║     ██║  ██║╚██████╔╝██║  ██║██║  ██║',
+    '╚══════╝   ╚═╝   ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝',
   ];
 
-  // The surname rendered in the same figlet font would overflow most
-  // terminals (~80 cols), so we render it as a spaced subtitle instead.
-  const surname = 'M  A  C  H  H  A  M  M  E  R';
-  const tagline = 'ZyphoraCMS  ·  crafted with care';
+  // "CMS" as a spaced subtitle completes the brand under the figlet
+  // (ZYPHORA + CMS = ZyphoraCMS), mirroring the original two-line layout
+  // without needing a second figlet block that would overflow most
+  // terminals (~80 cols).
+  const subtitle = 'C  O  N  T  E  N  T   M  A  N  A  G  E  M  E  N  T   S  Y  S  T  E  M';
+  const tagline = 'the self-hosted Astro CMS  ·  crafted with care';
 
   // Leading blank line gives breathing room above whatever Astro/Node has
   // already logged (port, env, etc.) by the time we get here.
   console.log();
-  for (const line of stefan) {
+  for (const line of zyphora) {
     console.log('  ' + gradient(line, pink, cyan));
   }
   console.log();
   // Flip the gradient direction on the subtitle so it visually mirrors the
   // figlet above — a tiny detail that makes the whole block feel composed.
-  console.log('  ' + bold + gradient(surname, cyan, pink) + reset);
+  console.log('  ' + bold + gradient(subtitle, cyan, pink) + reset);
   console.log('  ' + dim + tagline + reset);
   console.log();
 }
