@@ -1,11 +1,11 @@
 # Zyphora
 
-A self-hosted CMS built on Astro. SSR public site, admin panel at `/admin`, SQLite + Drizzle, session-cookie auth, a TipTap block editor, and a runtime theme system with a hooks API.
+A self-hosted CMS built on Astro. SSR public site, admin panel at `/admin`, MySQL + Drizzle, session-cookie auth, a TipTap block editor, and a runtime theme system with a hooks API.
 
 ## Stack
 
 - **Astro 6** with Node adapter (`output: 'server'`)
-- **SQLite** via `better-sqlite3` + **Drizzle ORM**
+- **MySQL** via `mysql2` + **Drizzle ORM**
 - **React** island for the **TipTap** rich-text editor
 - **Eta** templates for runtime themes
 - Argon2 password hashing (`@node-rs/argon2`)
@@ -17,7 +17,7 @@ A self-hosted CMS built on Astro. SSR public site, admin panel at `/admin`, SQLi
 ### Authoring
 - **Posts** — draft/publish workflow, slug auto-generation, rich-text editor (headings, lists, blockquotes, code blocks, links, inline code)
 - **Categories** — built-in `news`, `travel`, `gadgets`, `reviews` with a per-post select in the editor
-- **Media library** — upload images, video, and PDFs (10 MB limit) stored under `public/uploads/` with metadata in SQLite
+- **Media library** — upload images, video, and PDFs (10 MB limit) stored under `public/uploads/` with metadata in MySQL
 - **Users & roles** — `admin`, `editor`, `author`; admins manage users, editors edit any post, authors edit only their own
 - **Settings** — site title/description, active theme, password change
 
@@ -46,13 +46,26 @@ A self-hosted CMS built on Astro. SSR public site, admin panel at `/admin`, SQLi
 ## Requirements
 
 - Node `>=22.12.0`
+- MySQL 8+ (any flavor: MySQL Community Edition, MariaDB, Amazon RDS, PlanetScale via the standard driver, etc.)
 
 ## Quick start
+
+Create an empty MySQL database and point the app at it via environment variables:
+
+```sh
+export DB_HOST=localhost
+export DB_PORT=3306        # optional, defaults to 3306
+export DB_USER=zyphora
+export DB_PASS=...
+export DB_NAME=zyphora
+```
+
+Then:
 
 ```sh
 npm install
 npm run db:migrate
-npm run db:seed         # creates admin@zyphora.local / changeme123
+npm run db:seed         # creates system roles + admin@zyphora.local / changeme123
 npm run db:seed-posts   # optional: ~7 demo posts spread across categories
 npm run dev             # http://localhost:4321
 ```
@@ -75,8 +88,8 @@ Both seed scripts are idempotent — re-running them is safe.
 | `npm run build`          | Build to `./dist/` (Node standalone server)                  |
 | `npm run preview`        | Run the production build locally                             |
 | `npm run db:generate`    | Generate a new Drizzle migration from `schema.ts`            |
-| `npm run db:migrate`     | Apply pending migrations to `./data/zyphora.db`              |
-| `npm run db:seed`        | Idempotent — creates first admin and default settings        |
+| `npm run db:migrate`     | Apply pending migrations to the configured MySQL database    |
+| `npm run db:seed`        | Idempotent — seeds system roles, first admin, default settings |
 | `npm run db:seed-posts`  | Idempotent — inserts ~7 demo posts spread across categories  |
 | `npm run db:studio`      | Open the Drizzle Studio DB browser                           |
 
@@ -102,20 +115,27 @@ themes/
 └── default/           bundled theme (theme.json + Eta templates + assets)
 drizzle/               generated SQL migrations
 public/                static assets and uploads (uploads gitignored)
-data/                  SQLite database file (gitignored)
 ```
 
 ## Configuration
 
-Environment variables (all optional):
+Database connection (all four required; the app fails fast at boot if any are missing):
 
-| Variable                | Default                  | Description                          |
-| ----------------------- | ------------------------ | ------------------------------------ |
-| `DATABASE_PATH`         | `./data/zyphora.db`      | SQLite file location                 |
-| `DATABASE_URL`          | `file:./data/zyphora.db` | Used by `drizzle-kit` only           |
-| `SEED_ADMIN_EMAIL`      | `admin@zyphora.local`    | First admin email (seed script)      |
-| `SEED_ADMIN_PASSWORD`   | `changeme123`            | First admin password (seed script)   |
-| `SEED_ADMIN_NAME`       | `Admin`                  | First admin display name             |
+| Variable    | Default | Description                                              |
+| ----------- | ------- | -------------------------------------------------------- |
+| `DB_HOST`   | —       | MySQL host                                               |
+| `DB_PORT`   | `3306`  | MySQL port                                               |
+| `DB_USER`   | —       | MySQL user                                               |
+| `DB_PASS`   | —       | MySQL password                                           |
+| `DB_NAME`   | —       | MySQL database / schema                                  |
+
+Seed script (all optional):
+
+| Variable              | Default               | Description                          |
+| --------------------- | --------------------- | ------------------------------------ |
+| `SEED_ADMIN_EMAIL`    | `admin@zyphora.local` | First admin email (seed script)      |
+| `SEED_ADMIN_PASSWORD` | `changeme123`         | First admin password (seed script)   |
+| `SEED_ADMIN_NAME`     | `Admin`               | First admin display name             |
 
 ## Themes
 
@@ -138,7 +158,7 @@ node ./dist/server/entry.mjs
 
 The built server is a standalone Node process. Place it behind a reverse proxy (nginx, Caddy) and serve `public/uploads/` either from the same Node server (default) or from a static file server / CDN.
 
-Single-node only at the moment — sessions live in SQLite. For horizontal scaling, the session table needs to move (Redis is the obvious next step) and the database itself can swap to Postgres or libsql.
+Sessions currently live in MySQL alongside everything else. The app server itself is stateless (modulo connection pooling), so multiple app nodes can point at the same MySQL primary — but for horizontal scaling where every login/logout round-trip would otherwise hit the DB, moving sessions to Redis is the obvious next step.
 
 ## Roadmap
 
